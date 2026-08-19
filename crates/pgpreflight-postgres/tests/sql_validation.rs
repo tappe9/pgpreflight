@@ -39,7 +39,8 @@ fn rejects_nested_locking_select() {
 
 #[test]
 fn rejects_data_modifying_delete_cte() {
-    let sql = "WITH removed AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM removed";
+    let sql =
+        "WITH removed AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM removed";
     let error = parse_and_validate(sql).unwrap_err();
     assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
 }
