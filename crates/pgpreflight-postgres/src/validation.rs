@@ -80,7 +80,9 @@ fn delete_facts(delete: &Delete) -> StatementFacts {
 
     StatementFacts {
         kind: StatementKind::Delete,
-        target_relation: tables.first().and_then(|table| relation_from_factor(&table.relation)),
+        target_relation: tables
+            .first()
+            .and_then(|table| relation_from_factor(&table.relation)),
         has_where: delete.selection.is_some(),
         has_returning: delete.returning.is_some(),
         join_graph: JoinGraph::default(),
