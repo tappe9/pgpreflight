@@ -11,5 +11,5 @@ path = "src/lib.rs"
 
 [dependencies]
 pgpreflight-core = { path = "../pgpreflight-core", version = "0.1.0" }
-sqlparser = "0.62"
+sqlparser = { version = "0.62", features = ["visitor"] }
 thiserror = { workspace = true }
