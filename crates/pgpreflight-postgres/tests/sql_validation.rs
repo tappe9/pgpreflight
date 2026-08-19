@@ -1,12 +1,13 @@
 use std::{fs, path::PathBuf};
 
-use pgpreflight_core::StatementKind;
+use pgpreflight_core::{RelationRef, StatementKind};
 use pgpreflight_postgres::{CheckError, parse_and_validate};
 
 #[test]
 fn accepts_single_select() {
     let validated = parse_and_validate("SELECT * FROM orders WHERE id = 1").unwrap();
     assert_eq!(validated.facts().kind, StatementKind::Select);
+    assert!(validated.facts().has_where);
 }
 
 #[test]
@@ -18,6 +19,17 @@ fn accepts_update_and_delete() {
     assert!(update.facts().has_where);
     assert_eq!(delete.facts().kind, StatementKind::Delete);
     assert!(delete.facts().has_where);
+}
+
+#[test]
+fn preserves_quoted_target_relation_parts() {
+    let sql = r#"UPDATE "audit.schema"."Order.Table" SET status = 'done' WHERE id = 1"#;
+    let validated = parse_and_validate(sql).unwrap();
+
+    assert_eq!(
+        validated.facts().target_relation,
+        Some(RelationRef::new("audit.schema", "Order.Table"))
+    );
 }
 
 #[test]
