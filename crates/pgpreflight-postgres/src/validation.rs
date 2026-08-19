@@ -28,10 +28,10 @@ impl ValidatedStatement {
 }
 
 pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatement, CheckError> {
-    ensure_no_locking_queries(&statement)?;
+    ensure_no_unsafe_queries(&statement)?;
 
     let facts = match &statement {
-        Statement::Query(query) => validate_query(query)?,
+        Statement::Query(_) => select_facts(),
         Statement::Update(update) => update_facts(update),
         Statement::Delete(delete) => delete_facts(delete),
         Statement::Explain { .. } => return Err(CheckError::UnsafeConstruct { kind: "EXPLAIN" }),
@@ -41,30 +41,14 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     Ok(ValidatedStatement { statement, facts })
 }
 
-fn validate_query(query: &Query) -> Result<StatementFacts, CheckError> {
-    if contains_modifying_set_expr(&query.body) {
-        return Err(CheckError::UnsafeConstruct {
-            kind: "data-modifying query body",
-        });
-    }
-
-    if let Some(with) = &query.with {
-        for cte in &with.cte_tables {
-            if contains_modifying_set_expr(&cte.query.body) {
-                return Err(CheckError::UnsafeConstruct {
-                    kind: "data-modifying CTE",
-                });
-            }
-        }
-    }
-
-    Ok(StatementFacts {
+fn select_facts() -> StatementFacts {
+    StatementFacts {
         kind: StatementKind::Select,
         target_relation: None,
         has_where: false,
         has_returning: false,
         join_graph: JoinGraph::default(),
-    })
+    }
 }
 
 fn update_facts(update: &Update) -> StatementFacts {
@@ -108,10 +92,19 @@ fn relation_from_name(name: &ObjectName) -> RelationRef {
     RelationRef::new(schema, relation)
 }
 
+fn query_contains_modification(query: &Query) -> bool {
+    contains_modifying_set_expr(&query.body)
+        || query.with.as_ref().is_some_and(|with| {
+            with.cte_tables
+                .iter()
+                .any(|cte| query_contains_modification(&cte.query))
+        })
+}
+
 fn contains_modifying_set_expr(expr: &SetExpr) -> bool {
     match expr {
-        SetExpr::Insert(_) | SetExpr::Update(_) => true,
-        SetExpr::Query(query) => contains_modifying_set_expr(&query.body),
+        SetExpr::Insert(_) | SetExpr::Update(_) | SetExpr::Delete(_) | SetExpr::Merge(_) => true,
+        SetExpr::Query(query) => query_contains_modification(query),
         SetExpr::SetOperation { left, right, .. } => {
             contains_modifying_set_expr(left) || contains_modifying_set_expr(right)
         }
@@ -119,27 +112,27 @@ fn contains_modifying_set_expr(expr: &SetExpr) -> bool {
     }
 }
 
-fn ensure_no_locking_queries(statement: &Statement) -> Result<(), CheckError> {
+fn ensure_no_unsafe_queries(statement: &Statement) -> Result<(), CheckError> {
     #[derive(Default)]
-    struct LockVisitor;
+    struct SafetyVisitor;
 
-    impl Visitor for LockVisitor {
-        type Break = ();
+    impl Visitor for SafetyVisitor {
+        type Break = &'static str;
 
         fn pre_visit_query(&mut self, query: &Query) -> ControlFlow<Self::Break> {
-            if query.locks.is_empty() {
-                ControlFlow::Continue(())
-            } else {
-                ControlFlow::Break(())
+            if !query.locks.is_empty() {
+                return ControlFlow::Break("locking clause");
             }
+            if query_contains_modification(query) {
+                return ControlFlow::Break("data-modifying query");
+            }
+            ControlFlow::Continue(())
         }
     }
 
-    let mut visitor = LockVisitor;
+    let mut visitor = SafetyVisitor;
     match statement.visit(&mut visitor) {
         ControlFlow::Continue(()) => Ok(()),
-        ControlFlow::Break(()) => Err(CheckError::UnsafeConstruct {
-            kind: "locking clause",
-        }),
+        ControlFlow::Break(kind) => Err(CheckError::UnsafeConstruct { kind }),
     }
 }
