@@ -31,12 +31,27 @@ fn rejects_locking_select() {
 }
 
 #[test]
+fn rejects_nested_locking_select() {
+    let sql = "SELECT * FROM (SELECT * FROM orders FOR UPDATE) AS locked_orders";
+    let error = parse_and_validate(sql).unwrap_err();
+    assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
+}
+
+#[test]
+fn rejects_data_modifying_delete_cte() {
+    let sql = "WITH removed AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM removed";
+    let error = parse_and_validate(sql).unwrap_err();
+    assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
+}
+
+#[test]
 fn rejects_unsupported_outer_statements() {
     for sql in [
         "INSERT INTO orders(id) VALUES (1)",
         "MERGE INTO orders USING incoming ON orders.id = incoming.id WHEN MATCHED THEN DELETE",
         "COPY orders TO STDOUT",
         "CALL refresh_orders()",
+        "DO $$ BEGIN NULL; END $$",
         "CREATE TABLE x(id int)",
         "BEGIN",
         "EXPLAIN SELECT * FROM orders",
