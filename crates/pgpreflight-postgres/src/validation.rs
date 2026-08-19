@@ -31,7 +31,7 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     ensure_no_unsafe_queries(&statement)?;
 
     let facts = match &statement {
-        Statement::Query(_) => select_facts(),
+        Statement::Query(query) => select_facts(query),
         Statement::Update(update) => update_facts(update),
         Statement::Delete(delete) => delete_facts(delete),
         Statement::Explain { .. } => return Err(CheckError::UnsafeConstruct { kind: "EXPLAIN" }),
@@ -41,11 +41,16 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     Ok(ValidatedStatement { statement, facts })
 }
 
-fn select_facts() -> StatementFacts {
+fn select_facts(query: &Query) -> StatementFacts {
+    let has_where = match query.body.as_ref() {
+        SetExpr::Select(select) => select.selection.is_some(),
+        _ => false,
+    };
+
     StatementFacts {
         kind: StatementKind::Select,
         target_relation: None,
-        has_where: false,
+        has_where,
         has_returning: false,
         join_graph: JoinGraph::default(),
     }
@@ -79,17 +84,25 @@ fn delete_facts(delete: &Delete) -> StatementFacts {
 
 fn relation_from_factor(factor: &TableFactor) -> Option<RelationRef> {
     match factor {
-        TableFactor::Table { name, .. } => Some(relation_from_name(name)),
+        TableFactor::Table { name, .. } => relation_from_name(name),
         _ => None,
     }
 }
 
-fn relation_from_name(name: &ObjectName) -> RelationRef {
-    let rendered = name.to_string();
-    let mut parts = rendered.rsplitn(2, '.');
-    let relation = parts.next().unwrap_or(&rendered).trim_matches('"');
-    let schema = parts.next().unwrap_or("public").trim_matches('"');
-    RelationRef::new(schema, relation)
+fn relation_from_name(name: &ObjectName) -> Option<RelationRef> {
+    let mut identifiers = name
+        .0
+        .iter()
+        .map(|part| part.as_ident())
+        .collect::<Option<Vec<_>>>()?;
+
+    let relation = identifiers.pop()?.value.clone();
+    let schema = identifiers
+        .pop()
+        .map(|identifier| identifier.value.clone())
+        .unwrap_or_else(|| "public".to_owned());
+
+    Some(RelationRef::new(schema, relation))
 }
 
 fn query_contains_modification(query: &Query) -> bool {
