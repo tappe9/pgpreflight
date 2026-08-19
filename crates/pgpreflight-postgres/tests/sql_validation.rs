@@ -46,6 +46,13 @@ fn rejects_data_modifying_delete_cte() {
 }
 
 #[test]
+fn rejects_nested_data_modifying_delete_cte() {
+    let sql = "SELECT * FROM (WITH removed AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM removed) AS nested";
+    let error = parse_and_validate(sql).unwrap_err();
+    assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
+}
+
+#[test]
 fn rejects_unsupported_outer_statements() {
     for sql in [
         "INSERT INTO orders(id) VALUES (1)",
@@ -60,7 +67,9 @@ fn rejects_unsupported_outer_statements() {
         let error = parse_and_validate(sql).unwrap_err();
         assert!(matches!(
             error,
-            CheckError::UnsupportedStatement | CheckError::UnsafeConstruct { .. }
+            CheckError::SqlParse
+                | CheckError::UnsupportedStatement
+                | CheckError::UnsafeConstruct { .. }
         ));
     }
 }
