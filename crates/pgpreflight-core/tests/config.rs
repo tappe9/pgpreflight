@@ -39,7 +39,8 @@ version = 1
 [rules.PGP101]
 max_table_ratio = 1.1
 "#;
-    let config = toml::from_str::<Config>(text).expect("ratio should deserialize before validation");
+    let config =
+        toml::from_str::<Config>(text).expect("ratio should deserialize before validation");
 
     assert!(config.validate().is_err());
 }
