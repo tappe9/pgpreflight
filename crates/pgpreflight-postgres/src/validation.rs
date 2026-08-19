@@ -9,6 +9,8 @@ use crate::CheckError;
 
 #[derive(Debug)]
 pub struct ValidatedStatement {
+    // Consumed by the PostgreSQL planning adapter in the next implementation slice.
+    #[allow(dead_code)]
     statement: Statement,
     facts: StatementFacts,
 }
@@ -18,6 +20,8 @@ impl ValidatedStatement {
         &self.facts
     }
 
+    // Kept crate-private so sqlparser AST types never become part of the public API.
+    #[allow(dead_code)]
     pub(crate) fn statement(&self) -> &Statement {
         &self.statement
     }
