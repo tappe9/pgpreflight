@@ -100,8 +100,7 @@ fn accepted_corpus_is_accepted() {
 fn rejected_corpus_has_expected_stable_category() {
     for path in corpus_files("rejected") {
         let sql = fs::read_to_string(&path).unwrap();
-        let error = parse_and_validate(&sql)
-            .unwrap_err_or_else(|| panic!("{} was unexpectedly accepted", path.display()));
+        let error = parse_and_validate(&sql).unwrap_err();
         let name = path.file_name().unwrap().to_string_lossy();
 
         if name.starts_with("unsafe__") {
@@ -133,22 +132,4 @@ fn corpus_files(category: &str) -> Vec<PathBuf> {
         .collect::<Vec<_>>();
     files.sort();
     files
-}
-
-trait ResultTestExt<T, E> {
-    fn unwrap_err_or_else<F>(self, on_ok: F) -> E
-    where
-        F: FnOnce() -> !;
-}
-
-impl<T, E> ResultTestExt<T, E> for Result<T, E> {
-    fn unwrap_err_or_else<F>(self, on_ok: F) -> E
-    where
-        F: FnOnce() -> !,
-    {
-        match self {
-            Ok(_) => on_ok(),
-            Err(error) => error,
-        }
-    }
 }
