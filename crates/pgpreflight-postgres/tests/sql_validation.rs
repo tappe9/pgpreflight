@@ -1,3 +1,5 @@
+use std::{fs, path::PathBuf};
+
 use pgpreflight_core::StatementKind;
 use pgpreflight_postgres::{CheckError, parse_and_validate};
 
@@ -47,7 +49,11 @@ fn rejects_data_modifying_delete_cte() {
 
 #[test]
 fn rejects_nested_data_modifying_delete_cte() {
-    let sql = "SELECT * FROM (WITH removed AS (DELETE FROM orders WHERE id = 1 RETURNING id) SELECT * FROM removed) AS nested";
+    let sql = concat!(
+        "SELECT * FROM (WITH removed AS (",
+        "DELETE FROM orders WHERE id = 1 RETURNING id",
+        ") SELECT * FROM removed) AS nested"
+    );
     let error = parse_and_validate(sql).unwrap_err();
     assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
 }
@@ -79,4 +85,70 @@ fn parse_errors_are_sanitized() {
     let error = parse_and_validate("SELECT 'super-secret").unwrap_err();
     assert!(matches!(error, CheckError::SqlParse));
     assert!(!error.to_string().contains("super-secret"));
+}
+
+#[test]
+fn accepted_corpus_is_accepted() {
+    for path in corpus_files("accepted") {
+        let sql = fs::read_to_string(&path).unwrap();
+        parse_and_validate(&sql)
+            .unwrap_or_else(|error| panic!("{} was rejected: {error}", path.display()));
+    }
+}
+
+#[test]
+fn rejected_corpus_has_expected_stable_category() {
+    for path in corpus_files("rejected") {
+        let sql = fs::read_to_string(&path).unwrap();
+        let error = parse_and_validate(&sql)
+            .unwrap_err_or_else(|| panic!("{} was unexpectedly accepted", path.display()));
+        let name = path.file_name().unwrap().to_string_lossy();
+
+        if name.starts_with("unsafe__") {
+            assert!(
+                matches!(error, CheckError::UnsafeConstruct { .. }),
+                "{} returned {error:?}",
+                path.display()
+            );
+        } else if name.starts_with("unsupported__") {
+            assert!(
+                matches!(error, CheckError::UnsupportedStatement),
+                "{} returned {error:?}",
+                path.display()
+            );
+        } else {
+            panic!("rejected corpus file needs a stable-category prefix: {name}");
+        }
+    }
+}
+
+fn corpus_files(category: &str) -> Vec<PathBuf> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/sql-corpus")
+        .join(category);
+    let mut files = fs::read_dir(root)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "sql"))
+        .collect::<Vec<_>>();
+    files.sort();
+    files
+}
+
+trait ResultTestExt<T, E> {
+    fn unwrap_err_or_else<F>(self, on_ok: F) -> E
+    where
+        F: FnOnce() -> !;
+}
+
+impl<T, E> ResultTestExt<T, E> for Result<T, E> {
+    fn unwrap_err_or_else<F>(self, on_ok: F) -> E
+    where
+        F: FnOnce() -> !,
+    {
+        match self {
+            Ok(_) => on_ok(),
+            Err(error) => error,
+        }
+    }
 }
