@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tappe9/pgpreflight/schemas/report-v1.schema.json",
+  "title": "pgpreflight report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool",
+    "status",
+    "statement",
+    "summary",
+    "diagnostics",
+    "failure"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "pgpreflight" },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "status": {
+      "enum": ["clean", "warnings", "errors", "failed"]
+    },
+    "statement": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["select", "update", "delete"] }
+          }
+        }
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errors", "warnings"],
+      "properties": {
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "severity", "title", "message", "evidence"],
+        "properties": {
+          "rule_id": {
+            "enum": ["PGP001", "PGP002", "PGP101", "PGP102", "PGP103", "PGP104"]
+          },
+          "severity": { "enum": ["error", "warning"] },
+          "title": { "type": "string" },
+          "message": { "type": "string" },
+          "evidence": { "type": "object" },
+          "thresholds": { "type": "object" }
+        }
+      }
+    },
+    "failure": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "message"],
+          "properties": {
+            "kind": { "type": "string", "minLength": 1 },
+            "message": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}
