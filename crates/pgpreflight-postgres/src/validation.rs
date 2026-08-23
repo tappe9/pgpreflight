@@ -31,7 +31,8 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     ensure_no_unsafe_queries(&statement)?;
 
     let facts = match &statement {
-        Statement::Query(query) => select_facts(query),
+        Statement::Query(query) if is_select_query_body(&query.body) => select_facts(query),
+        Statement::Query(_) => return Err(CheckError::UnsupportedStatement),
         Statement::Update(update) => update_facts(update),
         Statement::Delete(delete) => delete_facts(delete),
         Statement::Explain { .. } => return Err(CheckError::UnsafeConstruct { kind: "EXPLAIN" }),
@@ -39,6 +40,17 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     };
 
     Ok(ValidatedStatement { statement, facts })
+}
+
+fn is_select_query_body(expr: &SetExpr) -> bool {
+    match expr {
+        SetExpr::Select(_) => true,
+        SetExpr::Query(query) => is_select_query_body(&query.body),
+        SetExpr::SetOperation { left, right, .. } => {
+            is_select_query_body(left) && is_select_query_body(right)
+        }
+        _ => false,
+    }
 }
 
 fn select_facts(query: &Query) -> StatementFacts {
