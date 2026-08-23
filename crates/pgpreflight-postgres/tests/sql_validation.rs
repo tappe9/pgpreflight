@@ -33,6 +33,33 @@ fn preserves_quoted_target_relation_parts() {
 }
 
 #[test]
+fn leaves_unqualified_target_relation_unresolved() {
+    let validated = parse_and_validate("UPDATE orders SET status = 'done'").unwrap();
+    assert_eq!(validated.facts().target_relation, None);
+}
+
+#[test]
+fn rejects_relation_names_that_cannot_be_represented() {
+    let error = parse_and_validate("UPDATE catalog.audit.orders SET status = 'done'").unwrap_err();
+    assert!(matches!(error, CheckError::UnsupportedStatement));
+}
+
+#[test]
+fn validated_statement_debug_is_sanitized() {
+    let validated = parse_and_validate("SELECT 'super-secret'").unwrap();
+    let debug = format!("{validated:?}");
+
+    assert!(!debug.contains("super-secret"));
+    assert!(debug.contains("ValidatedStatement"));
+}
+
+#[test]
+fn parenthesized_select_preserves_where_fact() {
+    let validated = parse_and_validate("(SELECT * FROM orders WHERE id = 1)").unwrap();
+    assert!(validated.facts().has_where);
+}
+
+#[test]
 fn rejects_multiple_statements() {
     let error = parse_and_validate("SELECT 1; SELECT 2;").unwrap_err();
     assert!(matches!(error, CheckError::MultipleStatements));
@@ -48,6 +75,14 @@ fn rejects_locking_select() {
 fn rejects_select_into() {
     let error = parse_and_validate("SELECT * INTO archived_orders FROM orders").unwrap_err();
     assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
+}
+
+#[test]
+fn rejects_non_select_query_bodies() {
+    for sql in ["VALUES (1)", "TABLE orders"] {
+        let error = parse_and_validate(sql).unwrap_err();
+        assert!(matches!(error, CheckError::UnsupportedStatement));
+    }
 }
 
 #[test]
