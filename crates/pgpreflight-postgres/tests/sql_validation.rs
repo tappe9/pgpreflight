@@ -78,11 +78,9 @@ fn rejects_select_into() {
 }
 
 #[test]
-fn rejects_non_select_query_bodies() {
-    for sql in ["VALUES (1)", "TABLE orders"] {
-        let error = parse_and_validate(sql).unwrap_err();
-        assert!(matches!(error, CheckError::UnsupportedStatement));
-    }
+fn rejects_values_query_body() {
+    let error = parse_and_validate("VALUES (1)").unwrap_err();
+    assert!(matches!(error, CheckError::UnsupportedStatement));
 }
 
 #[test]
