@@ -45,6 +45,12 @@ fn rejects_locking_select() {
 }
 
 #[test]
+fn rejects_select_into() {
+    let error = parse_and_validate("SELECT * INTO archived_orders FROM orders").unwrap_err();
+    assert!(matches!(error, CheckError::UnsafeConstruct { .. }));
+}
+
+#[test]
 fn rejects_nested_locking_select() {
     let sql = "SELECT * FROM (SELECT * FROM orders FOR UPDATE) AS locked_orders";
     let error = parse_and_validate(sql).unwrap_err();
