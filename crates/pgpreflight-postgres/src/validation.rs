@@ -1,4 +1,4 @@
-use std::ops::ControlFlow;
+use std::{fmt, ops::ControlFlow};
 
 use pgpreflight_core::{JoinGraph, RelationRef, StatementFacts, StatementKind};
 use sqlparser::ast::{
@@ -7,12 +7,20 @@ use sqlparser::ast::{
 
 use crate::CheckError;
 
-#[derive(Debug)]
 pub struct ValidatedStatement {
     // Consumed by the PostgreSQL planning adapter in the next implementation slice.
     #[allow(dead_code)]
     statement: Statement,
     facts: StatementFacts,
+}
+
+impl fmt::Debug for ValidatedStatement {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ValidatedStatement")
+            .field("facts", &self.facts)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ValidatedStatement {
@@ -31,10 +39,9 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     ensure_no_unsafe_queries(&statement)?;
 
     let facts = match &statement {
-        Statement::Query(query) if is_select_query_body(&query.body) => select_facts(query),
-        Statement::Query(_) => return Err(CheckError::UnsupportedStatement),
-        Statement::Update(update) => update_facts(update),
-        Statement::Delete(delete) => delete_facts(delete),
+        Statement::Query(query) => select_facts(query)?,
+        Statement::Update(update) => update_facts(update)?,
+        Statement::Delete(delete) => delete_facts(delete)?,
         Statement::Explain { .. } => return Err(CheckError::UnsafeConstruct { kind: "EXPLAIN" }),
         _ => return Err(CheckError::UnsupportedStatement),
     };
@@ -42,79 +49,103 @@ pub(crate) fn validate_statement(statement: Statement) -> Result<ValidatedStatem
     Ok(ValidatedStatement { statement, facts })
 }
 
-fn is_select_query_body(expr: &SetExpr) -> bool {
+fn select_facts(query: &Query) -> Result<StatementFacts, CheckError> {
+    ensure_select_query_body(&query.body)?;
+
+    Ok(StatementFacts {
+        kind: StatementKind::Select,
+        target_relation: None,
+        has_where: query_body_has_where(&query.body),
+        has_returning: false,
+        join_graph: JoinGraph::default(),
+    })
+}
+
+fn update_facts(update: &Update) -> Result<StatementFacts, CheckError> {
+    Ok(StatementFacts {
+        kind: StatementKind::Update,
+        target_relation: relation_from_factor(&update.table.relation)?,
+        has_where: update.selection.is_some(),
+        has_returning: update.returning.is_some(),
+        join_graph: JoinGraph::default(),
+    })
+}
+
+fn delete_facts(delete: &Delete) -> Result<StatementFacts, CheckError> {
+    let tables = match &delete.from {
+        FromTable::WithFromKeyword(tables) | FromTable::WithoutKeyword(tables) => tables,
+    };
+
+    Ok(StatementFacts {
+        kind: StatementKind::Delete,
+        target_relation: tables
+            .first()
+            .map(|table| relation_from_factor(&table.relation))
+            .transpose()?
+            .flatten(),
+        has_where: delete.selection.is_some(),
+        has_returning: delete.returning.is_some(),
+        join_graph: JoinGraph::default(),
+    })
+}
+
+fn relation_from_factor(factor: &TableFactor) -> Result<Option<RelationRef>, CheckError> {
+    match factor {
+        TableFactor::Table { name, .. } => relation_from_name(name),
+        _ => Ok(None),
+    }
+}
+
+fn relation_from_name(name: &ObjectName) -> Result<Option<RelationRef>, CheckError> {
+    let identifiers = name
+        .0
+        .iter()
+        .map(|part| part.as_ident())
+        .collect::<Option<Vec<_>>>()
+        .ok_or(CheckError::UnsupportedStatement)?;
+
+    match identifiers.as_slice() {
+        [_relation] => Ok(None),
+        [schema, relation] => Ok(Some(RelationRef::new(
+            schema.value.clone(),
+            relation.value.clone(),
+        ))),
+        _ => Err(CheckError::UnsupportedStatement),
+    }
+}
+
+fn ensure_select_query_body(expr: &SetExpr) -> Result<(), CheckError> {
     match expr {
-        SetExpr::Select(_) => true,
-        SetExpr::Query(query) => is_select_query_body(&query.body),
+        SetExpr::Select(_) => Ok(()),
+        SetExpr::Query(query) => ensure_select_query_body(&query.body),
         SetExpr::SetOperation { left, right, .. } => {
-            is_select_query_body(left) && is_select_query_body(right)
+            ensure_select_query_body(left)?;
+            ensure_select_query_body(right)
+        }
+        _ => Err(CheckError::UnsupportedStatement),
+    }
+}
+
+fn query_body_has_where(expr: &SetExpr) -> bool {
+    match expr {
+        SetExpr::Select(select) => select.selection.is_some(),
+        SetExpr::Query(query) => query_body_has_where(&query.body),
+        SetExpr::SetOperation { left, right, .. } => {
+            query_body_has_where(left) || query_body_has_where(right)
         }
         _ => false,
     }
 }
 
-fn select_facts(query: &Query) -> StatementFacts {
-    let has_where = match query.body.as_ref() {
-        SetExpr::Select(select) => select.selection.is_some(),
+fn set_expr_contains_select_into(expr: &SetExpr) -> bool {
+    match expr {
+        SetExpr::Select(select) => select.into.is_some(),
+        SetExpr::Query(query) => set_expr_contains_select_into(&query.body),
+        SetExpr::SetOperation { left, right, .. } => {
+            set_expr_contains_select_into(left) || set_expr_contains_select_into(right)
+        }
         _ => false,
-    };
-
-    StatementFacts {
-        kind: StatementKind::Select,
-        target_relation: None,
-        has_where,
-        has_returning: false,
-        join_graph: JoinGraph::default(),
     }
-}
-
-fn update_facts(update: &Update) -> StatementFacts {
-    StatementFacts {
-        kind: StatementKind::Update,
-        target_relation: relation_from_factor(&update.table.relation),
-        has_where: update.selection.is_some(),
-        has_returning: update.returning.is_some(),
-        join_graph: JoinGraph::default(),
-    }
-}
-
-fn delete_facts(delete: &Delete) -> StatementFacts {
-    let tables = match &delete.from {
-        FromTable::WithFromKeyword(tables) | FromTable::WithoutKeyword(tables) => tables,
-    };
-
-    StatementFacts {
-        kind: StatementKind::Delete,
-        target_relation: tables
-            .first()
-            .and_then(|table| relation_from_factor(&table.relation)),
-        has_where: delete.selection.is_some(),
-        has_returning: delete.returning.is_some(),
-        join_graph: JoinGraph::default(),
-    }
-}
-
-fn relation_from_factor(factor: &TableFactor) -> Option<RelationRef> {
-    match factor {
-        TableFactor::Table { name, .. } => relation_from_name(name),
-        _ => None,
-    }
-}
-
-fn relation_from_name(name: &ObjectName) -> Option<RelationRef> {
-    let mut identifiers = name
-        .0
-        .iter()
-        .map(|part| part.as_ident())
-        .collect::<Option<Vec<_>>>()?;
-
-    let relation = identifiers.pop()?.value.clone();
-    let schema = identifiers
-        .pop()
-        .map(|identifier| identifier.value.clone())
-        .unwrap_or_else(|| "public".to_owned());
-
-    Some(RelationRef::new(schema, relation))
 }
 
 fn query_contains_modification(query: &Query) -> bool {
@@ -150,6 +181,9 @@ fn ensure_no_unsafe_queries(statement: &Statement) -> Result<(), CheckError> {
             }
             if query_contains_modification(query) {
                 return ControlFlow::Break("data-modifying query");
+            }
+            if set_expr_contains_select_into(&query.body) {
+                return ControlFlow::Break("SELECT INTO");
             }
             ControlFlow::Continue(())
         }
