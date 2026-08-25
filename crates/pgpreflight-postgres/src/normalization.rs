@@ -41,7 +41,9 @@ fn normalize_node(raw_node: &Value) -> Result<PlanNode, NormalizationError> {
     })
 }
 
-fn normalize_relation(node: &Map<String, Value>) -> Result<Option<RelationRef>, NormalizationError> {
+fn normalize_relation(
+    node: &Map<String, Value>,
+) -> Result<Option<RelationRef>, NormalizationError> {
     let schema = optional_string(node, "Schema")?;
     let relation = optional_string(node, "Relation Name")?;
 
@@ -80,8 +82,10 @@ fn normalize_node_kind(node_type: &str) -> PlanNodeKind {
 }
 
 fn affected_rows(root: &PlanNode, statement_kind: StatementKind) -> Option<f64> {
-    if !matches!(statement_kind, StatementKind::Update | StatementKind::Delete)
-        || root.kind != PlanNodeKind::ModifyTable
+    if !matches!(
+        statement_kind,
+        StatementKind::Update | StatementKind::Delete
+    ) || root.kind != PlanNodeKind::ModifyTable
     {
         return None;
     }
