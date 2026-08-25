@@ -151,10 +151,7 @@ async fn load_relation_stats(
                 let pages = row
                     .try_get::<_, i64>(1)
                     .map_err(|_| PlanningError::Catalog)?;
-                (
-                    nonnegative_finite(rows),
-                    u64::try_from(pages).ok(),
-                )
+                (nonnegative_finite(rows), u64::try_from(pages).ok())
             }
             None => (None, None),
         };
