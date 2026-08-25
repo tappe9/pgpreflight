@@ -120,8 +120,13 @@ async fn maps_lock_timeout_and_rolls_back_recoverable_failure_without_sql_leak()
         .batch_execute(
             "DROP TABLE IF EXISTS pgpreflight_timeout_probe;\
              CREATE TABLE pgpreflight_timeout_probe (id integer PRIMARY KEY, value text NOT NULL);\
-             INSERT INTO pgpreflight_timeout_probe VALUES (1, 'before');\
-             BEGIN;\
+             INSERT INTO pgpreflight_timeout_probe VALUES (1, 'before');",
+        )
+        .await
+        .unwrap();
+    blocker
+        .batch_execute(
+            "BEGIN;\
              LOCK TABLE pgpreflight_timeout_probe IN ACCESS EXCLUSIVE MODE;",
         )
         .await
