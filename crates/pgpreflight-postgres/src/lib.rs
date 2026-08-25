@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod error;
+mod normalization;
 mod parser;
 mod planning;
 mod validation;

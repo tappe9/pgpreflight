@@ -192,12 +192,15 @@ The project must distinguish targets from versions/platforms actually covered by
 
 ## 9. Current implementation checkpoint
 
-Implemented on `main` at the time this document was introduced:
+Implemented on `main` through the planner-evidence foundation:
 
 - workspace/MSRV/license/CI foundation;
 - strict core config and defaults;
 - normalized model and report types;
 - report JSON Schema v1;
-- parser and conservative validation for the current supported SQL surface.
+- parser and conservative validation for the current supported SQL surface;
+- PostgreSQL Safe Mode planning with read-only transactions, local timeouts, plain `EXPLAIN`, rollback, and sanitized adapter failures;
+- raw plan normalization into stable core evidence;
+- PostgreSQL catalog relation statistics with missing values preserved as unknown.
 
-Safe Mode, normalization, rule evaluation, CLI, PostgreSQL compatibility matrix, and release packaging remain future v0.1 slices.
+Rule evaluation, CLI, PostgreSQL compatibility matrix, and release packaging remain future v0.1 slices.

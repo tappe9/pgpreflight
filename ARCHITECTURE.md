@@ -18,7 +18,7 @@ The architecture prioritizes:
 
 ## 2. System boundary
 
-Planned v0.1 pipeline:
+v0.1 pipeline:
 
 ```text
 input SQL
@@ -31,14 +31,14 @@ input SQL
                │ ValidatedStatement
                ▼
 ┌──────────────────────────────┐
-│ PostgreSQL Safe Mode adapter │  [planned]
+│ PostgreSQL Safe Mode adapter │  [implemented]
 │ read-only tx + timeouts      │
 │ plain EXPLAIN + catalog      │
 └──────────────┬───────────────┘
                │ transient server evidence
                ▼
 ┌──────────────────────────────┐
-│ normalization                │  [planned]
+│ normalization                │  [implemented]
 └──────────────┬───────────────┘
                │ AnalysisInput
                ▼
@@ -102,10 +102,7 @@ Implemented responsibilities:
 - conservative validation of supported `SELECT`, `UPDATE`, and `DELETE`;
 - rejection of unsafe/unsupported query forms;
 - sanitized parser/validation errors;
-- retention of the validated AST only behind a crate-private boundary for the future adapter.
-
-Planned responsibilities:
-
+- retention of the validated AST behind a crate-private boundary for planning;
 - PostgreSQL connection handling;
 - read-only transaction orchestration;
 - `SET LOCAL` timeout configuration;
@@ -146,7 +143,7 @@ See [docs/SQL-SUPPORT.md](docs/SQL-SUPPORT.md).
 
 ## 6. Safe Mode adapter
 
-The accepted v0.1 adapter behavior is equivalent to:
+The v0.1 adapter behavior is equivalent to:
 
 ```sql
 BEGIN READ ONLY;
@@ -166,11 +163,11 @@ Invariants:
 - roll back on normal and recoverable failure paths;
 - classify driver failures without exposing raw SQL or credential-bearing URLs.
 
-This adapter is not implemented yet. The contract exists to constrain its implementation.
+`SafeModePlanner` implements this boundary. Raw server plan JSON remains transient and is normalized before a `PlannedStatement` is returned to callers.
 
 ## 7. Normalization boundary
 
-Raw `EXPLAIN (FORMAT JSON, VERBOSE TRUE)` is sensitive transient evidence. The adapter must transform it into stable core types before rule evaluation.
+Raw `EXPLAIN (FORMAT JSON, VERBOSE TRUE)` is sensitive transient evidence. The adapter transforms it into stable core types before rule evaluation.
 
 The normalized model may keep non-sensitive evidence such as:
 
@@ -185,7 +182,7 @@ The normalized model may keep non-sensitive evidence such as:
 
 It must not persist raw filters, index conditions, output expressions, SQL text, SQL literals, or complete raw plans merely for convenience.
 
-Unknown plan node kinds should be represented without making the entire report unusable. Rules dependent on evidence that cannot be established should skip rather than invent estimates.
+Unknown plan node kinds are represented without making the entire report unusable. Rules dependent on evidence that cannot be established should skip rather than invent estimates.
 
 ## 8. Rule-engine boundary
 
@@ -219,8 +216,9 @@ Tests are divided by responsibility:
 - parser unit/integration tests for exactly-one and fail-closed semantics;
 - SQL corpus fixtures for accepted, rejected, and known-unsupported forms;
 - core config/report/schema contract tests;
-- future adapter integration tests proving read-only planning and non-execution;
-- future plan-normalization fixtures using semantic assertions rather than exact cost snapshots;
+- adapter integration tests proving read-only planning and non-execution;
+- plan-normalization fixtures using semantic assertions rather than exact cost snapshots;
+- PostgreSQL-backed normalization/catalog tests using semantic fields;
 - future rule boundary tests for every threshold and missing-evidence path;
 - future CLI tests for stdout/stderr/exit-code/redaction behavior;
 - future PostgreSQL 14–18 integration matrix.
