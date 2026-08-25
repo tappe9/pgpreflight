@@ -1,7 +1,7 @@
 use crate::{
     AffectedRowsTrigger, AnalysisInput, Config, Diagnostic, DiagnosticEvidence,
-    DiagnosticThresholds, PlanNode, PlanNodeKind, RelationRef, Report, ReportStatus,
-    ReportSummary, RuleId, Severity, StatementKind,
+    DiagnosticThresholds, PlanNode, PlanNodeKind, RelationRef, Report, ReportStatus, ReportSummary,
+    RuleId, Severity, StatementKind,
 };
 
 pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
@@ -130,12 +130,7 @@ fn large_sequential_scan_diagnostics(input: &AnalysisInput, config: &Config) -> 
     }
 
     let mut diagnostics = Vec::new();
-    collect_large_sequential_scan_diagnostics(
-        &input.plan.root,
-        input,
-        config,
-        &mut diagnostics,
-    );
+    collect_large_sequential_scan_diagnostics(&input.plan.root, input, config, &mut diagnostics);
     diagnostics
 }
 
