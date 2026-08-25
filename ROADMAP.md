@@ -41,18 +41,23 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - large affected-row warning by absolute rows and/or relation ratio with exact inclusive boundaries;
   - missing relation statistics preserved as unknown so ratio evaluation is skipped rather than guessed;
   - deterministic diagnostic ordering, status, and summary counts.
+- [x] **Issue #7 — PGP102/PGP103**
+  - per-node large sequential-scan warnings using inclusive relation-size and output-ratio thresholds;
+  - missing/non-positive statistics and non-sequential scans skipped without invented evidence;
+  - self-join sequential scans evaluated independently;
+  - large `SELECT` result warnings based on normalized root estimated rows so upper nodes such as `LIMIT` naturally apply;
+  - `UPDATE`/`DELETE ... RETURNING` excluded from PGP103;
+  - exact boundaries, deterministic ordering/counts, and PostgreSQL-backed normalized-evidence integration covered by tests.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #7 — PGP102/PGP103**  
-   Large sequential scan and large result-set diagnostics.
-2. **Issue #8 — PGP104**  
+1. **Issue #8 — PGP104**  
    Conservative join-graph analysis for provable Cartesian-join risk.
-3. **Issue #9 — `pgpreflight check` CLI**  
+2. **Issue #9 — `pgpreflight check` CLI**  
    Input/config/connection resolution, text/JSON output, `--fail-on`, exit codes, redaction.
-4. **Issue #10 — compatibility and safety matrix**  
+3. **Issue #10 — compatibility and safety matrix**  
    PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-5. **Issue #11 — v0.1 OSS release readiness**  
+4. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria
