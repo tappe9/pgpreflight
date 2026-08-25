@@ -178,10 +178,10 @@ fn collect_node_relations(
     seen: &mut BTreeSet<RelationRef>,
     relations: &mut Vec<RelationRef>,
 ) {
-    if let Some(relation) = &node.relation
-        && seen.insert(relation.clone())
-    {
-        relations.push(relation.clone());
+    if let Some(relation) = &node.relation {
+        if seen.insert(relation.clone()) {
+            relations.push(relation.clone());
+        }
     }
 
     for child in &node.children {
