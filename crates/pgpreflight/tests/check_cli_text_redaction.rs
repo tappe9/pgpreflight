@@ -39,12 +39,7 @@ fn text_connection_failure_redacts_sql_literals_credentials_and_driver_details()
     let secret_url = "postgresql://user:credential-marker@127.0.0.1:1/database";
     let output = Command::new(env!("CARGO_BIN_EXE_pgpreflight"))
         .current_dir(sandbox.path())
-        .args([
-            "check",
-            "-",
-            "--database-url",
-            secret_url,
-        ])
+        .args(["check", "-", "--database-url", secret_url])
         .env_remove("PGPREFLIGHT_DATABASE_URL")
         .env_remove("DATABASE_URL")
         .stdin(std::process::Stdio::piped())
