@@ -1,4 +1,4 @@
-use pgpreflight_core::{PlanNodeKind, RelationRef, StatementKind};
+use pgpreflight_core::{Config, PlanNodeKind, RelationRef, RuleId, StatementKind, analyze};
 use pgpreflight_postgres::{SafeModePlanner, parse_and_validate};
 use tokio_postgres::{Client, NoTls};
 
@@ -149,6 +149,62 @@ async fn update_uses_conservative_affected_row_estimate() {
 
     admin
         .batch_execute("DROP TABLE pgpreflight_affected_probe")
+        .await
+        .unwrap();
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn missing_where_rule_uses_syntax_and_where_true_counts_as_present() {
+    let Some(database_url) = test_database_url() else {
+        return;
+    };
+    let admin = connect_test_client(&database_url).await;
+    admin
+        .batch_execute(
+            "DROP TABLE IF EXISTS pgpreflight_rule_probe;\
+             CREATE TABLE pgpreflight_rule_probe (id integer PRIMARY KEY, payload text NOT NULL);\
+             INSERT INTO pgpreflight_rule_probe \
+             SELECT value, 'before' FROM generate_series(1, 10) AS value;\
+             ANALYZE pgpreflight_rule_probe;",
+        )
+        .await
+        .unwrap();
+
+    let mut planner = SafeModePlanner::connect(&database_url).await.unwrap();
+
+    let missing_where =
+        parse_and_validate("UPDATE pgpreflight_rule_probe SET payload = 'after'").unwrap();
+    let missing_where_plan = planner
+        .plan(
+            &missing_where,
+            &pgpreflight_core::PostgresConfig::default(),
+        )
+        .await
+        .unwrap();
+    let missing_where_report = analyze(missing_where_plan.analysis_input(), &Config::default());
+    assert!(
+        missing_where_report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule_id == RuleId::PGP001)
+    );
+
+    let where_true =
+        parse_and_validate("UPDATE pgpreflight_rule_probe SET payload = 'after' WHERE TRUE").unwrap();
+    let where_true_plan = planner
+        .plan(&where_true, &pgpreflight_core::PostgresConfig::default())
+        .await
+        .unwrap();
+    let where_true_report = analyze(where_true_plan.analysis_input(), &Config::default());
+    assert!(
+        where_true_report
+            .diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.rule_id != RuleId::PGP001)
+    );
+
+    admin
+        .batch_execute("DROP TABLE pgpreflight_rule_probe")
         .await
         .unwrap();
 }
