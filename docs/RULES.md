@@ -1,6 +1,6 @@
 # Diagnostic Rules
 
-Status: **v0.1 rule contract; PGP001–PGP103 implemented, PGP104 planned**
+Status: **v0.1 rule contract; PGP001–PGP104 implemented**
 
 pgpreflight v0.1 defines six deterministic rules. Severity is fixed in v0.1; users can enable/disable rules and configure approved numeric thresholds.
 
@@ -13,7 +13,7 @@ pgpreflight v0.1 defines six deterministic rules. Severity is fixed in v0.1; use
 | `PGP101` | warning | `UPDATE`, `DELETE` | large estimated affected row set |
 | `PGP102` | warning | supported statements | large relation sequential scan with low output ratio |
 | `PGP103` | warning | `SELECT` | large estimated result set |
-| `PGP104` | warning | supported join-bearing queries | conservatively provable disconnected join graph |
+| `PGP104` | warning | supported join-bearing `SELECT`, `UPDATE`, `DELETE` | conservatively provable disconnected join graph |
 
 All six rules default to enabled in the current core configuration model.
 
@@ -101,19 +101,28 @@ For `SELECT`, warn when the normalized root estimated rows meet/exceed the thres
 
 ## PGP104 — Possible Cartesian join
 
-PGP104 uses a conservative relation-occurrence graph rather than string-searching SQL.
+PGP104 uses a conservative relation-occurrence graph built at the validated-AST boundary rather than string-searching SQL.
 
-Design rules:
+Graph rules:
 
-- each relevant relation occurrence is a vertex;
-- provable cross-relation predicates may add edges;
-- `USING` and `NATURAL JOIN` connect operands when ownership is clear;
-- `CROSS JOIN` or `JOIN ... ON TRUE` does not itself add predicate evidence;
-- a later supported predicate may connect previously separate components;
+- each relevant base-relation occurrence is a vertex;
+- qualified `WHERE`/`ON` atoms that provably reference multiple relation occurrences add edges;
+- `USING` and `NATURAL JOIN` connect operands when ownership and operand connectivity are clear;
+- `CROSS JOIN` and `JOIN ... ON TRUE` do not themselves add predicate evidence;
+- later supported `WHERE` or `ON` predicates may connect previously separate components;
 - aliases distinguish repeated/self-join relation occurrences;
-- ambiguous ownership, unsupported `LATERAL`, complex correlated cases, and unsupported set-returning behavior cause conservative skip rather than a guessed warning.
+- unqualified or ambiguous ownership, duplicate qualifiers, `LATERAL`/derived relations, correlated subqueries, unsupported join operators, and other shapes that cannot be proven set `indeterminate` and cause the rule to skip.
 
-Warn when at least two relevant relation occurrences remain in multiple provable connected components.
+The implemented coverage includes direct select-shaped `SELECT`, validated `UPDATE ... FROM`, and validated `DELETE ... USING` statements. Set operations, CTE-backed ownership, and unsupported relation factors conservatively skip PGP104 rather than guessing.
+
+Warn only when the graph is determinate, contains at least two relation occurrences, and has more than one connected component.
+
+PGP104 evidence contains:
+
+- deterministic disconnected relation-occurrence groups with safe schema/name/alias identity;
+- normalized root estimated rows for `SELECT`, or normalized affected-row estimates for `UPDATE`/`DELETE` when available.
+
+It does not retain complete SQL, literals, raw predicates, or raw plan expressions.
 
 ## Evidence and ordering
 
@@ -124,7 +133,7 @@ v0.1 ordering is deterministic:
 1. `error` before `warning`;
 2. rule ID;
 3. relation identity when relevant;
-4. stable plan traversal order when relevant.
+4. stable plan traversal or relation-occurrence order when relevant.
 
 ## Configuration validation
 

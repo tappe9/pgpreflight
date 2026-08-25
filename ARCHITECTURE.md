@@ -27,6 +27,7 @@ input SQL
 ┌──────────────────────────────┐
 │ pgpreflight-postgres         │
 │ parse + conservative safety  │  [implemented]
+│ + relation-occurrence graph  │
 └──────────────┬───────────────┘
                │ ValidatedStatement
                ▼
@@ -44,15 +45,15 @@ input SQL
                ▼
 ┌──────────────────────────────┐
 │ pgpreflight-core             │
-│ deterministic rules/report   │  [PGP001–PGP103 implemented;
-└──────────────┬───────────────┘   PGP104 planned]
+│ deterministic rules/report   │  [PGP001–PGP104 implemented]
+└──────────────┬───────────────┘
                │ Report
         ┌──────┴──────┐
         ▼             ▼
       text           JSON                [CLI planned]
 ```
 
-`sqlparser-rs` is an admission/safety parser. PostgreSQL remains authoritative for server syntax acceptance, name resolution, types, permissions, statistics, and planning.
+`sqlparser-rs` is an admission/safety parser and a conservative ownership source. PostgreSQL remains authoritative for server syntax acceptance, name resolution, types, permissions, statistics, and planning.
 
 ## 3. Workspace and dependency direction
 
@@ -86,11 +87,7 @@ Implemented responsibilities:
 - normalized statement, relation, join-graph, and plan model types;
 - typed diagnostic/evidence/report model;
 - JSON-serializable report types;
-- deterministic PGP001–PGP103 evaluation over normalized evidence.
-
-Planned responsibility:
-
-- deterministic PGP104 evaluation over normalized evidence.
+- deterministic PGP001–PGP104 evaluation over normalized evidence, including fail-closed handling of malformed/indeterminate join graphs.
 
 The core API receives facts; it does not fetch them.
 
@@ -103,6 +100,8 @@ Implemented responsibilities:
 - conservative validation of supported `SELECT`, `UPDATE`, and `DELETE`;
 - rejection of unsafe/unsupported query forms;
 - sanitized parser/validation errors;
+- conservative relation-occurrence graph construction from the validated AST;
+- safe alias/identity ownership and `indeterminate` fallback for ambiguous, lateral, correlated, or unsupported graph shapes;
 - retention of the validated AST behind a crate-private boundary for planning;
 - PostgreSQL connection handling;
 - read-only transaction orchestration;
@@ -126,7 +125,7 @@ The CLI is intentionally thin. Its v0.1 responsibilities are planned to include:
 
 Rule logic and PostgreSQL-plan interpretation do not belong in the CLI.
 
-## 5. SQL admission boundary
+## 5. SQL admission and ownership boundary
 
 The parser and validator run before database work. They must:
 
@@ -139,6 +138,8 @@ The parser and validator run before database work. They must:
 - fail closed when a supported safety interpretation cannot be established.
 
 A successful `ValidatedStatement` retains its AST privately so the planning adapter can wrap precisely the statement that passed validation without reparsing a transformed string.
+
+At the same boundary, the PostgreSQL crate derives only relation ownership that can be proven locally. Qualified `WHERE`/`ON` relationships, `USING`, and `NATURAL JOIN` may create normalized edges. Ambiguous/unqualified ownership, derived or `LATERAL` relations, correlated subqueries, and unsupported shapes mark the graph indeterminate. An indeterminate graph does not weaken admission; it only prevents speculative PGP104 output.
 
 See [docs/SQL-SUPPORT.md](docs/SQL-SUPPORT.md).
 
@@ -174,12 +175,12 @@ The normalized model may keep non-sensitive evidence such as:
 
 - statement kind;
 - schema/relation identity;
-- relation alias;
+- relation alias and occurrence identity;
+- conservative join-graph edges and indeterminate state;
 - plan node kind;
 - estimated rows;
 - startup/total cost;
-- relation row statistics;
-- conservative join-graph relationships.
+- relation row statistics.
 
 It must not persist raw filters, index conditions, output expressions, SQL text, SQL literals, or complete raw plans merely for convenience.
 
@@ -194,8 +195,10 @@ Rules must:
 - have fixed v0.1 severities;
 - use explicit thresholds;
 - carry typed evidence rather than requiring consumers to parse human messages;
-- skip on insufficient evidence when a warning cannot be justified;
-- preserve deterministic ordering.
+- skip on insufficient or indeterminate evidence when a warning cannot be justified;
+- preserve deterministic diagnostic, plan-node, edge, and connected-component ordering.
+
+PGP104 is driven by the validated-AST `JoinGraph`; core does not inspect SQL text or parser nodes.
 
 See [docs/RULES.md](docs/RULES.md).
 
@@ -216,11 +219,12 @@ Tests are divided by responsibility:
 
 - parser unit/integration tests for exactly-one and fail-closed semantics;
 - SQL corpus fixtures for accepted, rejected, and known-unsupported forms;
+- validated-AST join-graph tests for edge ownership, indeterminate cases, self joins, and supported join-bearing DML;
 - core config/report/schema contract tests;
 - adapter integration tests proving read-only planning and non-execution;
 - plan-normalization fixtures using semantic assertions rather than exact cost snapshots;
 - PostgreSQL-backed normalization/catalog tests using semantic fields;
-- rule boundary tests for implemented thresholds and missing-evidence paths;
+- rule boundary tests for thresholds, missing evidence, connected components, ordering, and summary counts;
 - future CLI tests for stdout/stderr/exit-code/redaction behavior;
 - future PostgreSQL 14–18 integration matrix.
 

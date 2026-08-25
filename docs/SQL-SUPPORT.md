@@ -30,7 +30,7 @@ The current validator admits these outer families when their nested query struct
 
 All other outer statement types are unsupported for v0.1. This includes, among others, `INSERT`, `MERGE`, DDL, transaction control, `COPY`, `CALL`, and `DO`.
 
-Direct `EXPLAIN` is rejected explicitly as an unsafe construct because pgpreflight owns the future `EXPLAIN` wrapper and its options.
+Direct `EXPLAIN` is rejected explicitly as an unsafe construct because pgpreflight owns the `EXPLAIN` wrapper and its options.
 
 ## 4. Recursively rejected query constructs
 
@@ -52,9 +52,9 @@ Nested query bodies containing `INSERT`, `UPDATE`, `DELETE`, or `MERGE` are reje
 
 Current `SELECT` admission accepts select-shaped query bodies and recursively select-shaped set operations. Non-select set-expression forms are rejected as unsupported.
 
-Admission means only that the local AST safety policy passed. PostgreSQL may still reject the statement later for syntax-version, name-resolution, type, permission, or semantic reasons once connected planning is implemented.
+Admission means only that the local AST safety policy passed. PostgreSQL may still reject the statement later for syntax-version, name-resolution, type, permission, or semantic reasons during connected planning.
 
-## 6. Statement facts
+## 6. Statement facts and join ownership
 
 Validation produces normalized `StatementFacts` used by later analysis.
 
@@ -64,9 +64,22 @@ Current facts include:
 - target relation when it can be represented by the current normalized relation form;
 - whether a syntactic `WHERE` exists;
 - whether `RETURNING` exists;
-- a join-graph field reserved for later conservative relationship analysis.
+- a conservative relation-occurrence `JoinGraph` for PGP104.
 
 A syntactic `WHERE TRUE` still counts as a present `WHERE`; rule PGP001/PGP002 intentionally check syntax presence, not predicate selectivity.
+
+The join graph is intentionally narrower than SQL admission. It records only ownership that can be proven without PostgreSQL name-resolution guesses:
+
+- direct base-table occurrences are vertices;
+- aliases identify occurrences independently, including self joins;
+- qualified cross-relation `WHERE`/`ON` predicates, `USING`, and `NATURAL JOIN` may add edges;
+- `CROSS JOIN` and `ON TRUE` add no edge by themselves;
+- later supported predicates can connect earlier relation groups;
+- unqualified/ambiguous ownership, duplicate qualifiers, derived or `LATERAL` relations, correlated subqueries, CTE/set-operation ownership, and unsupported join shapes mark the graph `indeterminate`.
+
+An indeterminate graph does not reject an otherwise admitted statement. It only causes PGP104 to skip rather than emit a speculative warning. This distinction preserves PostgreSQL as semantic authority while keeping the diagnostic conservative.
+
+The graph builder covers direct select-shaped `SELECT`, `UPDATE ... FROM`, and `DELETE ... USING` forms admitted by the current policy. It stores safe relation identity/alias and normalized edges only; SQL text, literals, and raw expressions are not retained.
 
 ## 7. Known unsupported corpus
 
@@ -87,9 +100,9 @@ Moving a case from known-unsupported to accepted requires a reviewed safety rati
 
 ## 8. Parser vs PostgreSQL authority
 
-`sqlparser-rs` is not used as a PostgreSQL compatibility oracle. Its job is to provide enough structure for the pre-planning safety gate.
+`sqlparser-rs` is not used as a PostgreSQL compatibility oracle. Its job is to provide enough structure for the pre-planning safety gate and conservative normalized facts.
 
-After Safe Mode is implemented, PostgreSQL remains authoritative for:
+During connected planning, PostgreSQL remains authoritative for:
 
 - name resolution;
 - type checking;
@@ -100,6 +113,8 @@ After Safe Mode is implemented, PostgreSQL remains authoritative for:
 - catalog/statistics semantics.
 
 If PostgreSQL supports syntax the local parser cannot safely represent, pgpreflight rejects it rather than bypassing the gate.
+
+If a statement is admitted but its relation ownership cannot be established locally, PostgreSQL may still plan it successfully while PGP104 skips.
 
 ## 9. Parameters
 

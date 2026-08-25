@@ -48,16 +48,21 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - large `SELECT` result warnings based on normalized root estimated rows so upper nodes such as `LIMIT` naturally apply;
   - `UPDATE`/`DELETE ... RETURNING` excluded from PGP103;
   - exact boundaries, deterministic ordering/counts, and PostgreSQL-backed normalized-evidence integration covered by tests.
+- [x] **Issue #8 — PGP104**
+  - conservative relation-occurrence graphs derived from the validated AST;
+  - qualified `WHERE`/`ON` predicates, `USING`, and `NATURAL JOIN` used as provable edges;
+  - `CROSS JOIN`/`ON TRUE` left disconnected unless later supported predicates connect the groups;
+  - aliased self joins represented as distinct occurrences;
+  - ambiguous, unqualified, lateral, correlated, and unsupported ownership marked indeterminate and skipped;
+  - deterministic connected components, diagnostic ordering/counts, safe evidence, and supported join-bearing `UPDATE`/`DELETE` covered by tests.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #8 — PGP104**  
-   Conservative join-graph analysis for provable Cartesian-join risk.
-2. **Issue #9 — `pgpreflight check` CLI**  
+1. **Issue #9 — `pgpreflight check` CLI**  
    Input/config/connection resolution, text/JSON output, `--fail-on`, exit codes, redaction.
-3. **Issue #10 — compatibility and safety matrix**  
+2. **Issue #10 — compatibility and safety matrix**  
    PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-4. **Issue #11 — v0.1 OSS release readiness**  
+3. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria

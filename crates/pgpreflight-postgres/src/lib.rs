@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod error;
+mod join_graph;
 mod normalization;
 mod parser;
 mod planning;

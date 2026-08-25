@@ -1,7 +1,7 @@
 use crate::{
     AffectedRowsTrigger, AnalysisInput, Config, Diagnostic, DiagnosticEvidence,
-    DiagnosticThresholds, PlanNode, PlanNodeKind, RelationRef, Report, ReportStatus, ReportSummary,
-    RuleId, Severity, StatementKind,
+    DiagnosticThresholds, JoinGraph, PlanNode, PlanNodeKind, RelationOccurrence, RelationRef,
+    Report, ReportStatus, ReportSummary, RuleId, Severity, StatementKind,
 };
 
 pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
@@ -15,6 +15,9 @@ pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
     }
     diagnostics.extend(large_sequential_scan_diagnostics(input, config));
     if let Some(diagnostic) = large_result_set_diagnostic(input, config) {
+        diagnostics.push(diagnostic);
+    }
+    if let Some(diagnostic) = cartesian_join_diagnostic(input, config) {
         diagnostics.push(diagnostic);
     }
 
@@ -219,6 +222,89 @@ fn large_result_set_diagnostic(input: &AnalysisInput, config: &Config) -> Option
             max_result_rows: rule.max_result_rows,
         }),
     })
+}
+
+fn cartesian_join_diagnostic(input: &AnalysisInput, config: &Config) -> Option<Diagnostic> {
+    let graph = &input.statement.join_graph;
+    if !config.rules.pgp104.enabled || graph.indeterminate || graph.relation_occurrences.len() < 2 {
+        return None;
+    }
+
+    let disconnected_groups = connected_components(graph)?;
+    if disconnected_groups.len() < 2 {
+        return None;
+    }
+
+    let estimated_rows = match input.statement.kind {
+        StatementKind::Select => Some(input.plan.root.estimated_rows),
+        StatementKind::Update | StatementKind::Delete => input.plan.estimated_affected_rows,
+    };
+
+    Some(Diagnostic {
+        rule_id: RuleId::PGP104,
+        severity: Severity::Warning,
+        title: "Possible Cartesian join".to_owned(),
+        message: "Relation occurrences form multiple disconnected predicate components.".to_owned(),
+        evidence: DiagnosticEvidence::CartesianJoin {
+            disconnected_groups,
+            estimated_rows,
+        },
+        thresholds: None,
+    })
+}
+
+fn connected_components(graph: &JoinGraph) -> Option<Vec<Vec<RelationOccurrence>>> {
+    let occurrence_count = graph.relation_occurrences.len();
+    let mut adjacency = vec![Vec::new(); occurrence_count];
+
+    for edge in &graph.edges {
+        if edge.left >= occurrence_count || edge.right >= occurrence_count {
+            return None;
+        }
+        if edge.left == edge.right {
+            continue;
+        }
+        adjacency[edge.left].push(edge.right);
+        adjacency[edge.right].push(edge.left);
+    }
+
+    for neighbors in &mut adjacency {
+        neighbors.sort_unstable();
+        neighbors.dedup();
+    }
+
+    let mut visited = vec![false; occurrence_count];
+    let mut components = Vec::new();
+
+    for start in 0..occurrence_count {
+        if visited[start] {
+            continue;
+        }
+
+        visited[start] = true;
+        let mut stack = vec![start];
+        let mut component_indices = Vec::new();
+
+        while let Some(current) = stack.pop() {
+            component_indices.push(current);
+            for &neighbor in adjacency[current].iter().rev() {
+                if !visited[neighbor] {
+                    visited[neighbor] = true;
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        component_indices.sort_unstable();
+        components.push(
+            component_indices
+                .into_iter()
+                .map(|index| graph.relation_occurrences[index].clone())
+                .collect(),
+        );
+    }
+
+    Some(components)
 }
 
 fn target_relation(input: &AnalysisInput) -> Option<&RelationRef> {

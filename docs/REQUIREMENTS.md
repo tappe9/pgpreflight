@@ -141,9 +141,9 @@ Exact help wording is not a compatibility promise before release, but the semant
 - `PGP101`: large estimated affected rows → warning.
 - `PGP102`: large sequential scan with low estimated output ratio → warning.
 - `PGP103`: large estimated `SELECT` result → warning.
-- `PGP104`: conservatively provable disconnected join graph → warning.
+- `PGP104`: conservatively provable disconnected relation-occurrence graph → warning.
 
-Rules that require unavailable evidence must skip rather than guess. See [RULES.md](RULES.md).
+Rules that require unavailable or indeterminate evidence must skip rather than guess. PGP104 must use qualified ownership from the validated AST, treat aliases as distinct occurrences, and retain no SQL/literal/raw-expression evidence. See [RULES.md](RULES.md).
 
 ## 6. Safety and privacy requirements
 
@@ -192,7 +192,7 @@ The project must distinguish targets from versions/platforms actually covered by
 
 ## 9. Current implementation checkpoint
 
-Implemented on `main` through the PGP102/PGP103 rule-engine slice:
+Implemented on `main` through the PGP104 rule-engine slice:
 
 - workspace/MSRV/license/CI foundation;
 - strict core config and defaults;
@@ -202,6 +202,7 @@ Implemented on `main` through the PGP102/PGP103 rule-engine slice:
 - PostgreSQL Safe Mode planning with read-only transactions, local timeouts, plain `EXPLAIN`, rollback, and sanitized adapter failures;
 - raw plan normalization into stable core evidence;
 - PostgreSQL catalog relation statistics with missing values preserved as unknown;
-- deterministic core evaluation for PGP001–PGP103, including inclusive threshold boundaries, missing-evidence skips, independent self-join scan evaluation, and SELECT-root result estimates that naturally reflect upper plan nodes.
+- deterministic core evaluation for PGP001–PGP104, including inclusive numeric boundaries, missing-evidence skips, independent self-join scan evaluation, SELECT-root result estimates, and disconnected relation-occurrence analysis;
+- conservative validated-AST join graphs for direct `SELECT`, `UPDATE ... FROM`, and `DELETE ... USING`, with indeterminate ownership skipped and safe evidence only.
 
-PGP104 rule evaluation, CLI, PostgreSQL compatibility matrix, and release packaging remain future v0.1 slices.
+The end-user CLI, PostgreSQL 14–18 compatibility matrix, and release packaging remain future v0.1 slices.
