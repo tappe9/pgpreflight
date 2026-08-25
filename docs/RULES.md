@@ -1,6 +1,6 @@
 # Diagnostic Rules
 
-Status: **v0.1 rule contract; configuration types implemented, rule evaluation still planned**
+Status: **v0.1 rule contract; PGP001/PGP002/PGP101 implemented, PGP102–PGP104 planned**
 
 pgpreflight v0.1 defines six deterministic rules. Severity is fixed in v0.1; users can enable/disable rules and configure approved numeric thresholds.
 
@@ -61,7 +61,7 @@ AND relation_rows is known and positive
 AND estimated_affected_rows / relation_rows >= max_table_ratio
 ```
 
-If relation statistics are unavailable, only the absolute threshold is evaluated. The implementation must not invent relation size.
+If relation statistics are unavailable, only the absolute threshold is evaluated. The implementation does not invent relation size.
 
 ## PGP102 — Large sequential scan
 
