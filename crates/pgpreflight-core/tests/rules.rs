@@ -89,10 +89,7 @@ fn missing_where_rules_do_not_require_planner_evidence() {
 #[test]
 fn syntactically_present_where_skips_missing_where_rules() {
     for kind in [StatementKind::Update, StatementKind::Delete] {
-        let report = analyze(
-            &analysis_input(kind, true, None, None),
-            &Config::default(),
-        );
+        let report = analyze(&analysis_input(kind, true, None, None), &Config::default());
 
         assert_eq!(report.status, ReportStatus::Clean);
         assert!(report.diagnostics.is_empty());
@@ -132,23 +129,13 @@ fn pgp101_ratio_triggers_at_exact_ratio_boundary() {
     let config = large_affected_config();
 
     let below = analyze(
-        &analysis_input(
-            StatementKind::Update,
-            true,
-            Some(24.0),
-            Some(Some(100.0)),
-        ),
+        &analysis_input(StatementKind::Update, true, Some(24.0), Some(Some(100.0))),
         &config,
     );
     assert!(below.diagnostics.is_empty());
 
     let at_boundary = analyze(
-        &analysis_input(
-            StatementKind::Update,
-            true,
-            Some(25.0),
-            Some(Some(100.0)),
-        ),
+        &analysis_input(StatementKind::Update, true, Some(25.0), Some(Some(100.0))),
         &config,
     );
     assert_eq!(at_boundary.diagnostics.len(), 1);
@@ -169,23 +156,13 @@ fn pgp101_ratio_requires_min_rows_and_includes_exact_minimum() {
     let config = large_affected_config();
 
     let below_minimum = analyze(
-        &analysis_input(
-            StatementKind::Delete,
-            true,
-            Some(19.0),
-            Some(Some(76.0)),
-        ),
+        &analysis_input(StatementKind::Delete, true, Some(19.0), Some(Some(76.0))),
         &config,
     );
     assert!(below_minimum.diagnostics.is_empty());
 
     let at_minimum = analyze(
-        &analysis_input(
-            StatementKind::Delete,
-            true,
-            Some(20.0),
-            Some(Some(80.0)),
-        ),
+        &analysis_input(StatementKind::Delete, true, Some(20.0), Some(Some(80.0))),
         &config,
     );
     assert_eq!(at_minimum.diagnostics.len(), 1);
@@ -216,12 +193,7 @@ fn pgp101_missing_or_non_positive_stats_only_evaluate_absolute_threshold() {
 fn pgp101_records_both_triggers_in_stable_order() {
     let config = large_affected_config();
     let report = analyze(
-        &analysis_input(
-            StatementKind::Update,
-            true,
-            Some(100.0),
-            Some(Some(200.0)),
-        ),
+        &analysis_input(StatementKind::Update, true, Some(100.0), Some(Some(200.0))),
         &config,
     );
 
@@ -243,12 +215,7 @@ fn pgp101_records_both_triggers_in_stable_order() {
 fn diagnostics_and_summary_are_deterministic() {
     let config = large_affected_config();
     let report = analyze(
-        &analysis_input(
-            StatementKind::Update,
-            false,
-            Some(100.0),
-            Some(Some(200.0)),
-        ),
+        &analysis_input(StatementKind::Update, false, Some(100.0), Some(Some(200.0))),
         &config,
     );
 
@@ -275,12 +242,7 @@ fn disabled_rules_are_not_emitted() {
     config.rules.pgp101.enabled = false;
 
     let report = analyze(
-        &analysis_input(
-            StatementKind::Update,
-            false,
-            Some(100.0),
-            Some(Some(200.0)),
-        ),
+        &analysis_input(StatementKind::Update, false, Some(100.0), Some(Some(200.0))),
         &config,
     );
 
