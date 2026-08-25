@@ -204,7 +204,7 @@ fn pgp101_records_both_triggers_in_stable_order() {
     };
     assert_eq!(
         triggered_by,
-        &vec![
+        vec![
             AffectedRowsTrigger::AbsoluteRows,
             AffectedRowsTrigger::RelationRatio,
         ]
@@ -262,7 +262,7 @@ fn normalized_plan_relation_resolves_unqualified_target_for_diagnostics() {
         match &diagnostic.evidence {
             DiagnosticEvidence::MissingWhere { relation, .. }
             | DiagnosticEvidence::LargeAffectedRows { relation, .. } => {
-                assert_eq!(relation, &target_relation());
+                assert_eq!(relation, target_relation());
             }
             other => panic!("unexpected evidence: {other:?}"),
         }
