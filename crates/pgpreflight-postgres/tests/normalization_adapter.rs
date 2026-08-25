@@ -26,7 +26,7 @@ async fn planner_returns_normalized_semantic_plan_and_catalog_stats() {
         .batch_execute(
             "DROP TABLE IF EXISTS pgpreflight_normalization_probe;\
              CREATE TABLE pgpreflight_normalization_probe (id integer PRIMARY KEY, payload text NOT NULL);\
-             INSERT INTO pgpreflight_normalization_probe\
+             INSERT INTO pgpreflight_normalization_probe \
              SELECT value, 'payload-' || value::text FROM generate_series(1, 200) AS value;\
              ANALYZE pgpreflight_normalization_probe;",
         )
@@ -120,7 +120,7 @@ async fn update_uses_conservative_affected_row_estimate() {
         .batch_execute(
             "DROP TABLE IF EXISTS pgpreflight_affected_probe;\
              CREATE TABLE pgpreflight_affected_probe (id integer PRIMARY KEY, payload text NOT NULL);\
-             INSERT INTO pgpreflight_affected_probe\
+             INSERT INTO pgpreflight_affected_probe \
              SELECT value, 'before' FROM generate_series(1, 100) AS value;\
              ANALYZE pgpreflight_affected_probe;",
         )
