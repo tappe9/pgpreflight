@@ -1,7 +1,7 @@
 use crate::{
     AffectedRowsTrigger, AnalysisInput, Config, Diagnostic, DiagnosticEvidence,
-    DiagnosticThresholds, RelationRef, Report, ReportStatus, ReportSummary, RuleId, Severity,
-    StatementKind,
+    DiagnosticThresholds, PlanNode, PlanNodeKind, RelationRef, Report, ReportStatus,
+    ReportSummary, RuleId, Severity, StatementKind,
 };
 
 pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
@@ -11,6 +11,10 @@ pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
         diagnostics.push(diagnostic);
     }
     if let Some(diagnostic) = large_affected_rows_diagnostic(input, config) {
+        diagnostics.push(diagnostic);
+    }
+    diagnostics.extend(large_sequential_scan_diagnostics(input, config));
+    if let Some(diagnostic) = large_result_set_diagnostic(input, config) {
         diagnostics.push(diagnostic);
     }
 
@@ -116,6 +120,108 @@ fn large_affected_rows_diagnostic(input: &AnalysisInput, config: &Config) -> Opt
             max_rows: rule.max_rows,
             max_table_ratio: rule.max_table_ratio,
             min_rows_for_ratio: rule.min_rows_for_ratio,
+        }),
+    })
+}
+
+fn large_sequential_scan_diagnostics(input: &AnalysisInput, config: &Config) -> Vec<Diagnostic> {
+    if !config.rules.pgp102.enabled {
+        return Vec::new();
+    }
+
+    let mut diagnostics = Vec::new();
+    collect_large_sequential_scan_diagnostics(
+        &input.plan.root,
+        input,
+        config,
+        &mut diagnostics,
+    );
+    diagnostics
+}
+
+fn collect_large_sequential_scan_diagnostics(
+    node: &PlanNode,
+    input: &AnalysisInput,
+    config: &Config,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    if let Some(diagnostic) = large_sequential_scan_diagnostic(node, input, config) {
+        diagnostics.push(diagnostic);
+    }
+
+    for child in &node.children {
+        collect_large_sequential_scan_diagnostics(child, input, config, diagnostics);
+    }
+}
+
+fn large_sequential_scan_diagnostic(
+    node: &PlanNode,
+    input: &AnalysisInput,
+    config: &Config,
+) -> Option<Diagnostic> {
+    if node.kind != PlanNodeKind::SeqScan {
+        return None;
+    }
+
+    let relation = node.relation.as_ref()?;
+    let estimated_scanned_rows = input
+        .relations
+        .iter()
+        .find(|stats| stats.relation == *relation)
+        .and_then(|stats| stats.estimated_live_rows)
+        .filter(|rows| *rows > 0.0)?;
+    let estimated_output_rows = node.estimated_rows;
+    let estimated_output_ratio = estimated_output_rows / estimated_scanned_rows;
+    let rule = &config.rules.pgp102;
+
+    if !(estimated_scanned_rows >= rule.min_relation_rows
+        && estimated_output_ratio <= rule.max_output_ratio)
+    {
+        return None;
+    }
+
+    Some(Diagnostic {
+        rule_id: RuleId::PGP102,
+        severity: Severity::Warning,
+        title: "Large sequential scan".to_owned(),
+        message: "Sequential scan meets the configured relation-size and output-ratio thresholds."
+            .to_owned(),
+        evidence: DiagnosticEvidence::LargeSequentialScan {
+            relation: relation.clone(),
+            alias: node.relation_alias.clone(),
+            estimated_scanned_rows,
+            estimated_output_rows,
+            estimated_output_ratio,
+        },
+        thresholds: Some(DiagnosticThresholds::LargeSequentialScan {
+            min_relation_rows: rule.min_relation_rows,
+            max_output_ratio: rule.max_output_ratio,
+        }),
+    })
+}
+
+fn large_result_set_diagnostic(input: &AnalysisInput, config: &Config) -> Option<Diagnostic> {
+    if !config.rules.pgp103.enabled || input.statement.kind != StatementKind::Select {
+        return None;
+    }
+
+    let estimated_result_rows = input.plan.root.estimated_rows;
+    let rule = &config.rules.pgp103;
+    if estimated_result_rows < rule.max_result_rows {
+        return None;
+    }
+
+    Some(Diagnostic {
+        rule_id: RuleId::PGP103,
+        severity: Severity::Warning,
+        title: "Large estimated result set".to_owned(),
+        message: "Estimated SELECT result rows meet or exceed the configured PGP103 threshold."
+            .to_owned(),
+        evidence: DiagnosticEvidence::LargeResultSet {
+            estimated_result_rows,
+        },
+        thresholds: Some(DiagnosticThresholds::LargeResultSet {
+            max_result_rows: rule.max_result_rows,
         }),
     })
 }
