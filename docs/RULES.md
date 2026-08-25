@@ -1,6 +1,6 @@
 # Diagnostic Rules
 
-Status: **v0.1 rule contract; PGP001/PGP002/PGP101 implemented, PGP102–PGP104 planned**
+Status: **v0.1 rule contract; PGP001–PGP103 implemented, PGP104 planned**
 
 pgpreflight v0.1 defines six deterministic rules. Severity is fixed in v0.1; users can enable/disable rules and configure approved numeric thresholds.
 
