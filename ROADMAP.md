@@ -26,24 +26,30 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - fail-closed supported-statement policy;
   - nested modification/locking/`SELECT INTO` rejection;
   - accepted/rejected/known-unsupported SQL corpus.
+- [x] **Issue #4 — PostgreSQL Safe Mode planning adapter**
+  - read-only transaction orchestration;
+  - transaction-local statement/lock timeouts;
+  - plain `EXPLAIN (FORMAT JSON, VERBOSE TRUE)` only;
+  - rollback and sanitized adapter failures.
+- [x] **Issue #5 — plan and relation-statistics normalization**
+  - stable normalized plan nodes with unknown-node preservation;
+  - conservative UPDATE/DELETE affected-row estimates;
+  - PostgreSQL catalog relation statistics without fabricated missing values;
+  - raw expression/literal data excluded from normalized evidence.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #4 — PostgreSQL Safe Mode planning adapter**  
-   Read-only transaction, local timeouts, plain `EXPLAIN`, rollback, sanitized connection/driver failures.
-2. **Issue #5 — plan and relation-statistics normalization**  
-   Convert raw PostgreSQL plan/catalog data into stable core evidence without retaining sensitive expressions.
-3. **Issue #6 — PGP001/PGP002/PGP101**  
+1. **Issue #6 — PGP001/PGP002/PGP101**  
    Missing-`WHERE` and large affected-row diagnostics.
-4. **Issue #7 — PGP102/PGP103**  
+2. **Issue #7 — PGP102/PGP103**  
    Large sequential scan and large result-set diagnostics.
-5. **Issue #8 — PGP104**  
+3. **Issue #8 — PGP104**  
    Conservative join-graph analysis for provable Cartesian-join risk.
-6. **Issue #9 — `pgpreflight check` CLI**  
+4. **Issue #9 — `pgpreflight check` CLI**  
    Input/config/connection resolution, text/JSON output, `--fail-on`, exit codes, redaction.
-7. **Issue #10 — compatibility and safety matrix**  
+5. **Issue #10 — compatibility and safety matrix**  
    PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-8. **Issue #11 — v0.1 OSS release readiness**  
+6. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria
