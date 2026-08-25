@@ -36,20 +36,23 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - conservative UPDATE/DELETE affected-row estimates;
   - PostgreSQL catalog relation statistics without fabricated missing values;
   - raw expression/literal data excluded from normalized evidence.
+- [x] **Issue #6 — PGP001/PGP002/PGP101**
+  - errors for `UPDATE`/`DELETE` without a syntactic `WHERE`, with `WHERE TRUE` treated as present;
+  - large affected-row warning by absolute rows and/or relation ratio with exact inclusive boundaries;
+  - missing relation statistics preserved as unknown so ratio evaluation is skipped rather than guessed;
+  - deterministic diagnostic ordering, status, and summary counts.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #6 — PGP001/PGP002/PGP101**  
-   Missing-`WHERE` and large affected-row diagnostics.
-2. **Issue #7 — PGP102/PGP103**  
+1. **Issue #7 — PGP102/PGP103**  
    Large sequential scan and large result-set diagnostics.
-3. **Issue #8 — PGP104**  
+2. **Issue #8 — PGP104**  
    Conservative join-graph analysis for provable Cartesian-join risk.
-4. **Issue #9 — `pgpreflight check` CLI**  
+3. **Issue #9 — `pgpreflight check` CLI**  
    Input/config/connection resolution, text/JSON output, `--fail-on`, exit codes, redaction.
-5. **Issue #10 — compatibility and safety matrix**  
+4. **Issue #10 — compatibility and safety matrix**  
    PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-6. **Issue #11 — v0.1 OSS release readiness**  
+5. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria

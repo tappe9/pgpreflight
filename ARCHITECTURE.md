@@ -44,8 +44,8 @@ input SQL
                ▼
 ┌──────────────────────────────┐
 │ pgpreflight-core             │
-│ deterministic rules/report   │  [models/config implemented;
-└──────────────┬───────────────┘   rules planned]
+│ deterministic rules/report   │  [PGP001/PGP002/PGP101 implemented;
+└──────────────┬───────────────┘   PGP102–PGP104 planned]
                │ Report
         ┌──────┴──────┐
         ▼             ▼
@@ -85,11 +85,12 @@ Implemented responsibilities:
 - strict versioned configuration types and defaults;
 - normalized statement, relation, join-graph, and plan model types;
 - typed diagnostic/evidence/report model;
-- JSON-serializable report types.
+- JSON-serializable report types;
+- deterministic PGP001, PGP002, and PGP101 evaluation over normalized evidence.
 
 Planned responsibility:
 
-- deterministic PGP001–PGP104 evaluation over normalized evidence.
+- deterministic PGP102–PGP104 evaluation over normalized evidence.
 
 The core API receives facts; it does not fetch them.
 
@@ -219,7 +220,7 @@ Tests are divided by responsibility:
 - adapter integration tests proving read-only planning and non-execution;
 - plan-normalization fixtures using semantic assertions rather than exact cost snapshots;
 - PostgreSQL-backed normalization/catalog tests using semantic fields;
-- future rule boundary tests for every threshold and missing-evidence path;
+- rule boundary tests for implemented thresholds and missing-evidence paths;
 - future CLI tests for stdout/stderr/exit-code/redaction behavior;
 - future PostgreSQL 14–18 integration matrix.
 
