@@ -44,8 +44,8 @@ input SQL
                ▼
 ┌──────────────────────────────┐
 │ pgpreflight-core             │
-│ deterministic rules/report   │  [PGP001/PGP002/PGP101 implemented;
-└──────────────┬───────────────┘   PGP102–PGP104 planned]
+│ deterministic rules/report   │  [PGP001–PGP103 implemented;
+└──────────────┬───────────────┘   PGP104 planned]
                │ Report
         ┌──────┴──────┐
         ▼             ▼
@@ -86,11 +86,11 @@ Implemented responsibilities:
 - normalized statement, relation, join-graph, and plan model types;
 - typed diagnostic/evidence/report model;
 - JSON-serializable report types;
-- deterministic PGP001, PGP002, and PGP101 evaluation over normalized evidence.
+- deterministic PGP001–PGP103 evaluation over normalized evidence.
 
 Planned responsibility:
 
-- deterministic PGP102–PGP104 evaluation over normalized evidence.
+- deterministic PGP104 evaluation over normalized evidence.
 
 The core API receives facts; it does not fetch them.
 
