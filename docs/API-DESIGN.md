@@ -17,23 +17,18 @@ The public API should:
 
 ## 2. Crate surface
 
-### `pgpreflight-core` — implemented
+### `pgpreflight-core` — rule engine implemented
 
 The core crate currently exports:
 
 - `Config`, per-rule configuration structs, and `ConfigError`;
-- normalized statement/relation/join/plan types such as `AnalysisInput`, `StatementFacts`, `StatementKind`, `NormalizedPlan`, `PlanNode`, and `RelationStats`;
-- diagnostic/report types such as `Diagnostic`, `DiagnosticEvidence`, `RuleId`, `Severity`, `Report`, `ReportStatus`, and `FailureInfo`.
+- normalized statement/relation/join/plan types such as `AnalysisInput`, `StatementFacts`, `StatementKind`, `JoinGraph`, `RelationOccurrence`, `NormalizedPlan`, `PlanNode`, and `RelationStats`;
+- diagnostic/report types such as `Diagnostic`, `DiagnosticEvidence`, `RuleId`, `Severity`, `Report`, `ReportStatus`, and `FailureInfo`;
+- deterministic `analyze(&AnalysisInput, &Config) -> Report` evaluation for PGP001–PGP104.
 
 The crate forbids authored `unsafe` code and deliberately exposes no PostgreSQL client, `sqlparser-rs` AST, raw `EXPLAIN` JSON, or async-runtime types.
 
-A representative future analysis entry point is conceptually:
-
-```rust
-pub fn analyze(input: &AnalysisInput, config: &Config) -> Report;
-```
-
-The model/config/report contracts exist today; the complete rule-evaluation facade is still planned.
+`analyze` is database-independent: it consumes normalized evidence and strict configuration, computes typed diagnostics, sorts them deterministically, and derives report status/summary counts.
 
 ### `pgpreflight-postgres` — parser and planning API implemented
 
@@ -41,13 +36,15 @@ Current public surfaces include `parse_and_validate`, `ValidatedStatement`, `Saf
 
 `ValidatedStatement` exposes normalized `StatementFacts` through `facts()` but keeps the underlying `sqlparser-rs` `Statement` private to the crate. The planning adapter reuses the exact validated statement without making parser types part of the public compatibility surface.
 
+Validation also constructs the conservative `JoinGraph` used by PGP104. The graph contains safe base-relation identity/alias plus normalized occurrence edges only. When qualified ownership cannot be established, `indeterminate` is set so core analysis skips rather than guesses.
+
 `SafeModePlanner` performs read-only planning with transaction-local timeouts and plain `EXPLAIN`. `PlannedStatement::analysis_input()` exposes only normalized `AnalysisInput`: transient raw plan JSON and expression payloads do not cross the public boundary.
 
 `PlanningError` classifies connection, transaction, configuration, timeout, planning, invalid-plan, catalog, and rollback failures without surfacing raw driver messages.
 
 ## 3. Planned connected facade
 
-A higher-level v0.1 facade that combines validation, planning, rule evaluation, and report construction remains planned. Exact names and signatures are not an API commitment before that slice lands.
+A higher-level v0.1 facade/CLI path that combines input handling, validation, planning, rule evaluation, and report rendering remains planned. Exact names and signatures are not an API commitment before that slice lands.
 
 Whatever facade is chosen must preserve these boundaries:
 
@@ -59,20 +56,20 @@ Whatever facade is chosen must preserve these boundaries:
 
 ## 4. Normalized model policy
 
-Stable models should keep only evidence required by rules and machine consumers.
+Stable models keep only evidence required by rules and machine consumers.
 
 Allowed examples:
 
 - statement kind;
 - schema/relation name;
-- aliases;
+- aliases and relation occurrences;
 - syntactic `WHERE` / `RETURNING` facts;
+- conservative join-graph edges and `indeterminate` state;
 - plan node kind;
 - estimated rows/costs;
-- normalized relation statistics;
-- conservative join-graph relationships.
+- normalized relation statistics.
 
-Avoid exposing merely because it is present in a verbose plan:
+Avoid exposing merely because it is present in a verbose plan or AST:
 
 - complete SQL text;
 - literal values;
@@ -82,6 +79,8 @@ Avoid exposing merely because it is present in a verbose plan:
 - arbitrary driver error payloads.
 
 Unknown plan nodes use the stable `Other(String)` representation. Missing evidence remains missing rather than being guessed.
+
+PGP104 evidence contains deterministic disconnected groups of `RelationOccurrence` and an optional normalized result/affected-row estimate. It does not contain raw SQL or predicate expressions.
 
 ## 5. Configuration API
 
@@ -113,13 +112,13 @@ All six v0.1 rules default to enabled. Ratios outside `0.0..=1.0`, negative row 
 
 ## 6. Report API and JSON
 
-The typed report model is designed to serialize into schema version 1. Machine consumers should inspect structured fields (`rule_id`, `severity`, evidence, status) rather than parse human message text.
+The typed report model serializes into schema version 1. Machine consumers should inspect structured fields (`rule_id`, `severity`, evidence, status) rather than parse human message text.
 
 See [JSON-REPORT.md](JSON-REPORT.md) and `../schemas/report-v1.schema.json`.
 
 ## 7. Error policy
 
-Public error types should classify a failure well enough to act on it without embedding raw sensitive inputs.
+Public error types classify a failure well enough to act on it without embedding raw sensitive inputs.
 
 Good error information includes:
 
