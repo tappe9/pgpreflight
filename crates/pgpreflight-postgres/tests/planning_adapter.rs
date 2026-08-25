@@ -32,10 +32,9 @@ async fn plans_update_without_executing_it_and_rolls_back_success() {
         .unwrap();
 
     let mut planner = SafeModePlanner::connect(&database_url).await.unwrap();
-    let statement = parse_and_validate(
-        "UPDATE pgpreflight_update_probe SET value = 'after' WHERE id = 1",
-    )
-    .unwrap();
+    let statement =
+        parse_and_validate("UPDATE pgpreflight_update_probe SET value = 'after' WHERE id = 1")
+            .unwrap();
     let config = PostgresConfig::default();
 
     planner.plan(&statement, &config).await.unwrap();
@@ -159,8 +158,7 @@ async fn maps_lock_timeout_and_rolls_back_recoverable_failure_without_sql_leak()
 
 #[tokio::test(flavor = "current_thread")]
 async fn connection_failures_do_not_leak_credential_bearing_url() {
-    let database_url =
-        "postgresql://postgres:credential-secret-marker@127.0.0.1:1/postgres";
+    let database_url = "postgresql://postgres:credential-secret-marker@127.0.0.1:1/postgres";
 
     let error = match SafeModePlanner::connect(database_url).await {
         Ok(_) => panic!("connection unexpectedly succeeded"),
