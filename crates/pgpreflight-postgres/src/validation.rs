@@ -1,11 +1,14 @@
 use std::{fmt, ops::ControlFlow};
 
-use pgpreflight_core::{JoinGraph, RelationRef, StatementFacts, StatementKind};
+use pgpreflight_core::{RelationRef, StatementFacts, StatementKind};
 use sqlparser::ast::{
     Delete, FromTable, ObjectName, Query, SetExpr, Statement, TableFactor, Update, Visit, Visitor,
 };
 
-use crate::CheckError;
+use crate::{
+    CheckError,
+    join_graph::{delete_join_graph, select_join_graph, update_join_graph},
+};
 
 pub struct ValidatedStatement {
     // Consumed by the PostgreSQL planning adapter in the next implementation slice.
@@ -57,7 +60,7 @@ fn select_facts(query: &Query) -> Result<StatementFacts, CheckError> {
         target_relation: None,
         has_where: query_body_has_where(&query.body),
         has_returning: false,
-        join_graph: JoinGraph::default(),
+        join_graph: select_join_graph(query),
     })
 }
 
@@ -67,7 +70,7 @@ fn update_facts(update: &Update) -> Result<StatementFacts, CheckError> {
         target_relation: relation_from_factor(&update.table.relation)?,
         has_where: update.selection.is_some(),
         has_returning: update.returning.is_some(),
-        join_graph: JoinGraph::default(),
+        join_graph: update_join_graph(update),
     })
 }
 
@@ -85,7 +88,7 @@ fn delete_facts(delete: &Delete) -> Result<StatementFacts, CheckError> {
             .flatten(),
         has_where: delete.selection.is_some(),
         has_returning: delete.returning.is_some(),
-        join_graph: JoinGraph::default(),
+        join_graph: delete_join_graph(delete),
     })
 }
 
