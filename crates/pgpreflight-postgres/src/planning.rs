@@ -26,6 +26,9 @@ pub enum PlanningError {
 }
 
 pub struct PlannedStatement {
+    // Issue #5 consumes this transient raw JSON during normalization. Keeping it
+    // crate-private prevents callers from depending on PostgreSQL's raw shape.
+    #[allow(dead_code)]
     pub(crate) raw_plan: Value,
 }
 
