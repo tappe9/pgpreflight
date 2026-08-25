@@ -105,10 +105,9 @@ const fn map_input_failure(failure: InputFailure) -> CliFailure {
         InputFailure::NotUtf8 => {
             CliFailure::new("input_not_utf8", "SQL input must be valid UTF-8.")
         }
-        InputFailure::Empty => CliFailure::new(
-            "empty_input",
-            "exactly one SQL statement is required.",
-        ),
+        InputFailure::Empty => {
+            CliFailure::new("empty_input", "exactly one SQL statement is required.")
+        }
     }
 }
 
@@ -119,10 +118,9 @@ const fn map_check_failure(failure: CheckError) -> CliFailure {
             "multiple_statements",
             "exactly one SQL statement is required.",
         ),
-        CheckError::UnsupportedStatement => CliFailure::new(
-            "unsupported_statement",
-            "statement type is not supported.",
-        ),
+        CheckError::UnsupportedStatement => {
+            CliFailure::new("unsupported_statement", "statement type is not supported.")
+        }
         CheckError::UnsafeConstruct { .. } => CliFailure::new(
             "unsafe_sql",
             "SQL contains a construct that cannot be checked safely.",
@@ -130,21 +128,16 @@ const fn map_check_failure(failure: CheckError) -> CliFailure {
     }
 }
 
-const fn map_config_failure(
-    failure: ConfigFailure,
-    statement: StatementKind,
-) -> CliFailure {
+const fn map_config_failure(failure: ConfigFailure, statement: StatementKind) -> CliFailure {
     match failure {
         ConfigFailure::Io => CliFailure::for_statement(
             "config_io",
             "configuration file could not be read.",
             statement,
         ),
-        ConfigFailure::Parse => CliFailure::for_statement(
-            "config_parse",
-            "configuration file is invalid.",
-            statement,
-        ),
+        ConfigFailure::Parse => {
+            CliFailure::for_statement("config_parse", "configuration file is invalid.", statement)
+        }
     }
 }
 
@@ -166,16 +159,10 @@ const fn map_database_url_failure(
     }
 }
 
-const fn map_planning_failure(
-    failure: PlanningError,
-    statement: StatementKind,
-) -> CliFailure {
+const fn map_planning_failure(failure: PlanningError, statement: StatementKind) -> CliFailure {
     let (kind, message) = match failure {
         PlanningError::Connection => ("database_connection", "database connection failed."),
-        PlanningError::Transaction => (
-            "database_transaction",
-            "safe planning transaction failed.",
-        ),
+        PlanningError::Transaction => ("database_transaction", "safe planning transaction failed."),
         PlanningError::Configuration => (
             "database_configuration",
             "safe planning configuration failed.",

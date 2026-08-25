@@ -46,9 +46,7 @@ fn parse_config(bytes: &[u8]) -> Result<Config, ConfigFailure> {
     toml::from_str(source).map_err(|_| ConfigFailure::Parse)
 }
 
-pub(crate) fn resolve_database_url(
-    explicit: Option<String>,
-) -> Result<String, DatabaseUrlFailure> {
+pub(crate) fn resolve_database_url(explicit: Option<String>) -> Result<String, DatabaseUrlFailure> {
     if let Some(database_url) = explicit {
         return validate_database_url(database_url);
     }

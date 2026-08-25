@@ -111,7 +111,11 @@ fn write_text_failure(output: &mut impl Write, report: &Report) -> io::Result<()
 fn write_text_report(output: &mut impl Write, report: &Report) -> io::Result<()> {
     writeln!(output, "pgpreflight: {}", status_label(report.status))?;
     if let Some(statement) = &report.statement {
-        writeln!(output, "statement: {}", statement_kind_label(statement.kind))?;
+        writeln!(
+            output,
+            "statement: {}",
+            statement_kind_label(statement.kind)
+        )?;
     }
     writeln!(
         output,
