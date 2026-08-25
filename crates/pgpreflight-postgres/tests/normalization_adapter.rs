@@ -175,10 +175,7 @@ async fn missing_where_rule_uses_syntax_and_where_true_counts_as_present() {
     let missing_where =
         parse_and_validate("UPDATE pgpreflight_rule_probe SET payload = 'after'").unwrap();
     let missing_where_plan = planner
-        .plan(
-            &missing_where,
-            &pgpreflight_core::PostgresConfig::default(),
-        )
+        .plan(&missing_where, &pgpreflight_core::PostgresConfig::default())
         .await
         .unwrap();
     let missing_where_report = analyze(missing_where_plan.analysis_input(), &Config::default());
@@ -190,7 +187,8 @@ async fn missing_where_rule_uses_syntax_and_where_true_counts_as_present() {
     );
 
     let where_true =
-        parse_and_validate("UPDATE pgpreflight_rule_probe SET payload = 'after' WHERE TRUE").unwrap();
+        parse_and_validate("UPDATE pgpreflight_rule_probe SET payload = 'after' WHERE TRUE")
+            .unwrap();
     let where_true_plan = planner
         .plan(&where_true, &pgpreflight_core::PostgresConfig::default())
         .await
