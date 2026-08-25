@@ -1,6 +1,4 @@
-use pgpreflight_core::{
-    Config, DiagnosticEvidence, PlanNodeKind, RelationRef, RuleId, analyze,
-};
+use pgpreflight_core::{Config, DiagnosticEvidence, PlanNodeKind, RelationRef, RuleId, analyze};
 use pgpreflight_postgres::{SafeModePlanner, parse_and_validate};
 use tokio_postgres::{Client, NoTls};
 
