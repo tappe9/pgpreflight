@@ -1,6 +1,7 @@
 use crate::{
-    AffectedRowsTrigger, AnalysisInput, Config, Diagnostic, DiagnosticEvidence, DiagnosticThresholds,
-    RelationRef, Report, ReportStatus, ReportSummary, RuleId, Severity, StatementKind,
+    AffectedRowsTrigger, AnalysisInput, Config, Diagnostic, DiagnosticEvidence,
+    DiagnosticThresholds, RelationRef, Report, ReportStatus, ReportSummary, RuleId, Severity,
+    StatementKind,
 };
 
 pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
@@ -17,7 +18,9 @@ pub fn analyze(input: &AnalysisInput, config: &Config) -> Report {
         left.severity
             .cmp(&right.severity)
             .then(left.rule_id.cmp(&right.rule_id))
-            .then_with(|| evidence_relation(&left.evidence).cmp(&evidence_relation(&right.evidence)))
+            .then_with(|| {
+                evidence_relation(&left.evidence).cmp(&evidence_relation(&right.evidence))
+            })
     });
 
     report(input.statement.kind, diagnostics)
@@ -101,8 +104,7 @@ fn large_affected_rows_diagnostic(input: &AnalysisInput, config: &Config) -> Opt
         rule_id: RuleId::PGP101,
         severity: Severity::Warning,
         title: "Large affected row set".to_owned(),
-        message: "Estimated affected rows meet or exceed a configured PGP101 threshold."
-            .to_owned(),
+        message: "Estimated affected rows meet or exceed a configured PGP101 threshold.".to_owned(),
         evidence: DiagnosticEvidence::LargeAffectedRows {
             relation: relation.clone(),
             estimated_affected_rows,
