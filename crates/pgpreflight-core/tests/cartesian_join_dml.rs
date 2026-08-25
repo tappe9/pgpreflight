@@ -1,11 +1,7 @@
 use pgpreflight_core::{AnalysisInput, Config, RuleId, analyze};
 use serde_json::{Value, json};
 
-fn analysis_input(
-    kind: &str,
-    estimated_affected_rows: Option<f64>,
-    graph: Value,
-) -> AnalysisInput {
+fn analysis_input(kind: &str, estimated_affected_rows: Option<f64>, graph: Value) -> AnalysisInput {
     let target_relation = if kind == "select" {
         Value::Null
     } else {
@@ -86,10 +82,7 @@ fn malformed_edges_fail_closed_without_a_pgp104_diagnostic() {
     let mut graph = disconnected_graph();
     graph["edges"] = json!([{ "left": 0, "right": 2 }]);
 
-    let report = analyze(
-        &analysis_input("select", None, graph),
-        &Config::default(),
-    );
+    let report = analyze(&analysis_input("select", None, graph), &Config::default());
 
     assert!(
         report
