@@ -1,6 +1,6 @@
 # Safety Model
 
-Status: **v0.1 contract; parser gate implemented, database Safe Mode planned**
+Status: **v0.1 contract; parser gate and database Safe Mode implemented**
 
 pgpreflight is designed to reduce the chance of accidentally executing risky DML while obtaining PostgreSQL planner evidence. It does not claim that planning arbitrary PostgreSQL code is side-effect free.
 
@@ -32,9 +32,9 @@ Implemented today, `parse_and_validate()`:
 
 See [SQL-SUPPORT.md](SQL-SUPPORT.md).
 
-## 3. Planned Safe Mode transaction
+## 3. Safe Mode transaction
 
-The adapter must implement behavior equivalent to:
+The adapter implements behavior equivalent to:
 
 ```sql
 BEGIN READ ONLY;
@@ -45,7 +45,7 @@ EXPLAIN (FORMAT JSON, VERBOSE TRUE) <validated statement>;
 ROLLBACK;
 ```
 
-The exact client protocol sequence may differ, but the invariants must not.
+The exact client protocol sequence may differ, but the invariants do not.
 
 ### Required invariants
 
@@ -96,7 +96,7 @@ statement_timeout_ms = 3000
 lock_timeout_ms = 500
 ```
 
-These are v0.1 defaults, not universal safe values. They bound planning/lock waits once the adapter is implemented; they do not bound every possible server-side resource or extension behavior.
+These are v0.1 defaults, not universal safe values. They bound planning/lock waits in the adapter; they do not bound every possible server-side resource or extension behavior.
 
 ## 7. Sensitive information
 
@@ -108,20 +108,22 @@ Treat these as sensitive transient data:
 - raw PostgreSQL error strings when they can embed SQL;
 - raw verbose plan JSON and arbitrary expression strings.
 
-Stable public models should contain only normalized non-sensitive evidence required for diagnostics.
+Stable public models contain only normalized non-sensitive evidence required for diagnostics.
 
 ## 8. Error redaction
 
-Public errors should classify failures without echoing sensitive source material. SQL parse errors currently expose a sanitized fixed message rather than parser-library details that may contain the source query.
+Public errors classify failures without echoing sensitive source material. SQL parse errors expose a sanitized fixed message rather than parser-library details that may contain the source query, and the planning adapter maps connection, timeout, planning, catalog, and rollback failures to stable categories without surfacing raw driver messages.
 
-The connected adapter and CLI must preserve this approach for connection, timeout, planning, catalog, and rendering failures.
+The future CLI must preserve this approach for rendering and top-level tool failures.
 
-## 9. Validation requirements for Safe Mode implementation
+## 9. Safe Mode validation coverage
 
-The adapter issue is not complete until integration tests prove at least:
+Integration coverage for the adapter proves at least:
 
 - an `UPDATE` can be planned without changing the target row;
 - `transaction_read_only` is `on` during planning;
 - timeout categories are mapped without leaking test secret markers;
 - no `EXPLAIN ANALYZE` construction exists in the production path;
 - rollback behavior is exercised.
+
+Plan-normalization integration coverage additionally checks semantic plan fields and catalog evidence without asserting exact PostgreSQL costs.
