@@ -16,6 +16,16 @@ async fn connect_test_client(database_url: &str) -> Client {
     client
 }
 
+async fn pgp104_report(
+    planner: &mut SafeModePlanner,
+    config: &Config,
+    sql: &str,
+) -> pgpreflight_core::Report {
+    let validated = parse_and_validate(sql).unwrap();
+    let planned = planner.plan(&validated, &config.postgres).await.unwrap();
+    analyze(planned.analysis_input(), config)
+}
+
 #[tokio::test(flavor = "current_thread")]
 async fn planned_join_graph_drives_pgp104_without_retaining_sql_literals() {
     let Some(database_url) = test_database_url() else {
@@ -41,14 +51,14 @@ async fn planned_join_graph_drives_pgp104_without_retaining_sql_literals() {
     config.rules.pgp102.enabled = false;
     config.rules.pgp103.enabled = false;
 
-    let disconnected = parse_and_validate(
+    let disconnected_report = pgp104_report(
+        &mut planner,
+        &config,
         "SELECT 'pgpreflight-secret-literal' AS marker \
          FROM public.pgpreflight_cartesian_left AS l \
          CROSS JOIN public.pgpreflight_cartesian_right AS r",
     )
-    .unwrap();
-    let disconnected_plan = planner.plan(&disconnected, &config.postgres).await.unwrap();
-    let disconnected_report = analyze(disconnected_plan.analysis_input(), &config);
+    .await;
 
     let diagnostic = disconnected_report
         .diagnostics
@@ -59,15 +69,15 @@ async fn planned_join_graph_drives_pgp104_without_retaining_sql_literals() {
     assert!(!evidence.contains("pgpreflight-secret-literal"));
     assert!(!evidence.contains("SELECT"));
 
-    let connected = parse_and_validate(
+    let connected_report = pgp104_report(
+        &mut planner,
+        &config,
         "SELECT * \
          FROM public.pgpreflight_cartesian_left AS l \
          CROSS JOIN public.pgpreflight_cartesian_right AS r \
          WHERE l.id = r.id",
     )
-    .unwrap();
-    let connected_plan = planner.plan(&connected, &config.postgres).await.unwrap();
-    let connected_report = analyze(connected_plan.analysis_input(), &config);
+    .await;
 
     assert!(
         connected_report
@@ -75,6 +85,56 @@ async fn planned_join_graph_drives_pgp104_without_retaining_sql_literals() {
             .iter()
             .all(|diagnostic| diagnostic.rule_id != RuleId::PGP104)
     );
+
+    for sql in [
+        "UPDATE public.pgpreflight_cartesian_left AS l \
+         SET marker = 'pgpreflight-secret-update' \
+         FROM public.pgpreflight_cartesian_right AS r \
+         WHERE l.id > 0 AND r.id > 0",
+        "DELETE FROM public.pgpreflight_cartesian_left AS l \
+         USING public.pgpreflight_cartesian_right AS r \
+         WHERE l.id > 0 AND r.id > 0",
+    ] {
+        let report = pgp104_report(&mut planner, &config, sql).await;
+        let diagnostic = report
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.rule_id == RuleId::PGP104)
+            .unwrap_or_else(|| panic!("{sql} should emit PGP104"));
+        let evidence = serde_json::to_string(&diagnostic.evidence).unwrap();
+        assert!(!evidence.contains("pgpreflight-secret-update"));
+        assert!(!evidence.contains(sql));
+    }
+
+    for sql in [
+        "UPDATE public.pgpreflight_cartesian_left AS l \
+         SET marker = 'connected' \
+         FROM public.pgpreflight_cartesian_right AS r \
+         WHERE l.id = r.id",
+        "DELETE FROM public.pgpreflight_cartesian_left AS l \
+         USING public.pgpreflight_cartesian_right AS r \
+         WHERE l.id = r.id",
+    ] {
+        let report = pgp104_report(&mut planner, &config, sql).await;
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .all(|diagnostic| diagnostic.rule_id != RuleId::PGP104),
+            "{sql}"
+        );
+    }
+
+    let unchanged = admin
+        .query_one(
+            "SELECT count(*), bool_and(marker = 'left') \
+             FROM pgpreflight_cartesian_left",
+            &[],
+        )
+        .await
+        .unwrap();
+    assert_eq!(unchanged.get::<_, i64>(0), 2);
+    assert!(unchanged.get::<_, bool>(1));
 
     admin
         .batch_execute(

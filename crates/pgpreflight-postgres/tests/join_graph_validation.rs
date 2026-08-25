@@ -66,6 +66,18 @@ fn qualified_on_using_and_natural_join_create_edges() {
 }
 
 #[test]
+fn qualified_single_relation_filters_do_not_create_edges() {
+    let graph = join_graph(
+        "SELECT * FROM accounts AS a CROSS JOIN orders AS o \
+         WHERE a.active = TRUE AND o.active = TRUE",
+    );
+
+    assert!(!graph.indeterminate);
+    assert_eq!(graph.relation_occurrences.len(), 2);
+    assert!(graph.edges.is_empty());
+}
+
+#[test]
 fn later_predicates_connect_groups_and_self_join_aliases_remain_distinct() {
     let graph = join_graph(
         "SELECT * FROM accounts AS a \
@@ -97,6 +109,27 @@ fn later_predicates_connect_groups_and_self_join_aliases_remain_distinct() {
         Some("child")
     );
     assert_eq!(edge_pairs(&self_join), vec![(0, 1)]);
+}
+
+#[test]
+fn later_on_predicates_connect_existing_groups_in_deterministic_edge_order() {
+    let graph = join_graph(
+        "SELECT * FROM accounts AS a \
+         CROSS JOIN orders AS o \
+         JOIN line_items AS li \
+           ON a.id = li.account_id AND o.id = li.order_id",
+    );
+
+    assert!(!graph.indeterminate);
+    assert_eq!(graph.relation_occurrences.len(), 3);
+    assert_eq!(
+        graph
+            .edges
+            .iter()
+            .map(|edge| (edge.left, edge.right))
+            .collect::<Vec<_>>(),
+        vec![(0, 2), (1, 2)]
+    );
 }
 
 #[test]
@@ -138,5 +171,21 @@ fn supported_update_from_and_delete_using_build_join_graphs() {
             "{sql}"
         );
         assert_eq!(edge_pairs(&graph), vec![(0, 1)], "{sql}");
+    }
+}
+
+#[test]
+fn disconnected_supported_update_from_and_delete_using_remain_edge_free() {
+    for sql in [
+        "UPDATE accounts AS a SET status = 'done' \
+         FROM orders AS o WHERE a.active = TRUE AND o.active = TRUE",
+        "DELETE FROM accounts AS a USING orders AS o \
+         WHERE a.active = TRUE AND o.active = TRUE",
+    ] {
+        let graph = join_graph(sql);
+
+        assert!(!graph.indeterminate, "{sql}");
+        assert_eq!(graph.relation_occurrences.len(), 2, "{sql}");
+        assert!(graph.edges.is_empty(), "{sql}");
     }
 }
