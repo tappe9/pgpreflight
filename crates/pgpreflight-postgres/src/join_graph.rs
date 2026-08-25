@@ -29,8 +29,9 @@ pub(crate) fn update_join_graph(update: &Update) -> JoinGraph {
 
     if let Some(from) = &update.from {
         let from_tables = match from {
-            UpdateTableFromKind::BeforeSet(tables)
-            | UpdateTableFromKind::AfterSet(tables) => tables,
+            UpdateTableFromKind::BeforeSet(tables) | UpdateTableFromKind::AfterSet(tables) => {
+                tables
+            }
         };
         tables.extend(from_tables);
     }
@@ -290,11 +291,12 @@ impl JoinGraphBuilder {
                 } else {
                     None
                 };
+                let Some(neighbor) = neighbor else {
+                    continue;
+                };
 
-                if let Some(neighbor) = neighbor {
-                    if allowed.contains(&neighbor) && !visited.contains(&neighbor) {
-                        stack.push(neighbor);
-                    }
+                if allowed.contains(&neighbor) && !visited.contains(&neighbor) {
+                    stack.push(neighbor);
                 }
             }
         }
@@ -327,11 +329,7 @@ impl JoinGraphBuilder {
         }
     }
 
-    fn process_predicate_atom(
-        &mut self,
-        predicate: &Expr,
-        allowed: Option<&BTreeSet<usize>>,
-    ) {
+    fn process_predicate_atom(&mut self, predicate: &Expr, allowed: Option<&BTreeSet<usize>>) {
         let mut visitor = PredicateOwnerVisitor {
             qualifiers: &self.qualifiers,
             allowed,
@@ -394,7 +392,7 @@ impl Visitor for PredicateOwnerVisitor<'_> {
     fn pre_visit_expr(&mut self, expr: &Expr) -> ControlFlow<Self::Break> {
         match expr {
             Expr::Identifier(_)
-            | Expr::QualifiedWildcard(_)
+            | Expr::QualifiedWildcard(..)
             | Expr::BinaryOp {
                 op: BinaryOperator::And | BinaryOperator::Or,
                 ..
