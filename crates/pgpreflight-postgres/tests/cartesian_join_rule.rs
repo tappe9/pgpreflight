@@ -47,10 +47,7 @@ async fn planned_join_graph_drives_pgp104_without_retaining_sql_literals() {
          CROSS JOIN public.pgpreflight_cartesian_right AS r",
     )
     .unwrap();
-    let disconnected_plan = planner
-        .plan(&disconnected, &config.postgres)
-        .await
-        .unwrap();
+    let disconnected_plan = planner.plan(&disconnected, &config.postgres).await.unwrap();
     let disconnected_report = analyze(disconnected_plan.analysis_input(), &config);
 
     let diagnostic = disconnected_report
