@@ -50,7 +50,7 @@ input SQL
                │ Report
         ┌──────┴──────┐
         ▼             ▼
-      text           JSON                [CLI planned]
+      text           JSON                [CLI implemented]
 ```
 
 `sqlparser-rs` is an admission/safety parser and a conservative ownership source. PostgreSQL remains authoritative for server syntax acceptance, name resolution, types, permissions, statistics, and planning.
@@ -113,14 +113,14 @@ Implemented responsibilities:
 
 ### `pgpreflight`
 
-The CLI is intentionally thin. Its v0.1 responsibilities are planned to include:
+The CLI is intentionally thin. Its implemented v0.1 responsibilities include:
 
 - `check <INPUT>` arguments;
-- file/stdin input and UTF-8 handling;
-- config discovery;
+- file/stdin input, BOM handling, and UTF-8 validation;
+- strict config discovery without cross-file merging;
 - database URL precedence;
-- text/JSON rendering;
-- color policy and `NO_COLOR`;
+- non-colored text and schema-v1 JSON rendering;
+- sanitized top-level tool failures;
 - `--fail-on` and exit codes.
 
 Rule logic and PostgreSQL-plan interpretation do not belong in the CLI.
@@ -225,7 +225,7 @@ Tests are divided by responsibility:
 - plan-normalization fixtures using semantic assertions rather than exact cost snapshots;
 - PostgreSQL-backed normalization/catalog tests using semantic fields;
 - rule boundary tests for thresholds, missing evidence, connected components, ordering, and summary counts;
-- future CLI tests for stdout/stderr/exit-code/redaction behavior;
+- CLI process integration tests for input/config/URL resolution, stdout/stderr, exit codes, redaction, and connected non-execution;
 - future PostgreSQL 14–18 integration matrix.
 
 No test should turn an implementation accident into a compatibility promise when PostgreSQL itself is the intended authority.

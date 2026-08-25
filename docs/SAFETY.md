@@ -1,6 +1,6 @@
 # Safety Model
 
-Status: **v0.1 contract; parser gate and database Safe Mode implemented**
+Status: **v0.1 contract; parser gate, database Safe Mode, and CLI redaction implemented**
 
 pgpreflight is designed to reduce the chance of accidentally executing risky DML while obtaining PostgreSQL planner evidence. It does not claim that planning arbitrary PostgreSQL code is side-effect free.
 
@@ -114,7 +114,7 @@ Stable public models contain only normalized non-sensitive evidence required for
 
 Public errors classify failures without echoing sensitive source material. SQL parse errors expose a sanitized fixed message rather than parser-library details that may contain the source query, and the planning adapter maps connection, timeout, planning, catalog, and rollback failures to stable categories without surfacing raw driver messages.
 
-The future CLI must preserve this approach for rendering and top-level tool failures.
+The CLI preserves this boundary by rendering only stable report fields and fixed sanitized tool-failure messages. Integration tests assert that SQL literal and credential markers do not appear in structured output.
 
 ## 9. Safe Mode validation coverage
 
@@ -126,4 +126,4 @@ Integration coverage for the adapter proves at least:
 - no `EXPLAIN ANALYZE` construction exists in the production path;
 - rollback behavior is exercised.
 
-Plan-normalization integration coverage additionally checks semantic plan fields and catalog evidence without asserting exact PostgreSQL costs.
+Plan-normalization integration coverage additionally checks semantic plan fields and catalog evidence without asserting exact PostgreSQL costs. CLI integration coverage exercises the connected planning path and verifies that a checked `UPDATE` is not executed.

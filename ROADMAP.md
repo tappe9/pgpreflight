@@ -55,14 +55,19 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - aliased self joins represented as distinct occurrences;
   - ambiguous, unqualified, lateral, correlated, and unsupported ownership marked indeterminate and skipped;
   - deterministic connected components, diagnostic ordering/counts, safe evidence, and supported join-bearing `UPDATE`/`DELETE` covered by tests.
+- [x] **Issue #9 — `pgpreflight check` CLI**
+  - SQL file and stdin input with BOM, UTF-8, empty/comment-only, and exactly-one-statement handling;
+  - strict single-file config discovery and database URL precedence;
+  - human-readable text and schema-v1 JSON output;
+  - `--fail-on error|warning` and fixed clean/diagnostic/tool-failure exit codes;
+  - sanitized parser/driver/tool failures without SQL literal or credential-bearing URL leakage;
+  - process integration coverage for streams, exit codes, resolution precedence, redaction, and connected non-execution.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #9 — `pgpreflight check` CLI**  
-   Input/config/connection resolution, text/JSON output, `--fail-on`, exit codes, redaction.
-2. **Issue #10 — compatibility and safety matrix**  
+1. **Issue #10 — compatibility and safety matrix**  
    PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-3. **Issue #11 — v0.1 OSS release readiness**  
+2. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria

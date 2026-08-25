@@ -6,10 +6,22 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "pgpreflight"
 path = "src/main.rs"
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 pgpreflight-core = { path = "../pgpreflight-core", version = "0.1.0" }
 pgpreflight-postgres = { path = "../pgpreflight-postgres", version = "0.1.0" }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+toml = "0.8"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["net", "time"] }
+tokio-postgres = { workspace = true }

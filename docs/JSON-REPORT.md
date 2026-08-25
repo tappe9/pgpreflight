@@ -1,6 +1,6 @@
 # JSON Report Contract
 
-Status: **schema v1 and typed report model implemented; CLI emission planned**
+Status: **schema v1, typed report model, and CLI emission implemented**
 
 pgpreflight uses an explicit report schema version so automation can depend on a documented machine boundary independently of the pre-1.0 Rust API.
 
@@ -63,18 +63,18 @@ Schema v1 recognizes rule IDs `PGP001`, `PGP002`, `PGP101`, `PGP102`, `PGP103`, 
 
 For tool failures, `failure` contains a stable non-empty `kind` and sanitized human message. The design intentionally avoids placing raw SQL, passwords, complete connection URLs, or raw verbose plan data in this object.
 
-The exact adapter/CLI failure taxonomy will be completed with their implementation slices.
+The PostgreSQL adapter and CLI map source failures to stable sanitized categories without rendering raw parser or driver messages.
 
 ## 5. CLI JSON-stream contract
 
-The planned `--format json` behavior is:
+The `--format json` behavior is:
 
 - stdout contains exactly one JSON object for clean, diagnostic, and structured tool-failure outcomes;
 - stderr remains empty for those structured outcomes;
 - no ANSI escapes are emitted;
 - process exit status still follows the CLI failure/`--fail-on` policy.
 
-This behavior is not yet available because the end-user CLI is not implemented.
+CLI integration tests cover clean, warning, error-diagnostic, and structured tool-failure stream behavior.
 
 ## 6. Schema-v1 compatibility policy
 
