@@ -226,10 +226,7 @@ fn large_result_set_diagnostic(input: &AnalysisInput, config: &Config) -> Option
 
 fn cartesian_join_diagnostic(input: &AnalysisInput, config: &Config) -> Option<Diagnostic> {
     let graph = &input.statement.join_graph;
-    if !config.rules.pgp104.enabled
-        || graph.indeterminate
-        || graph.relation_occurrences.len() < 2
-    {
+    if !config.rules.pgp104.enabled || graph.indeterminate || graph.relation_occurrences.len() < 2 {
         return None;
     }
 
@@ -247,8 +244,7 @@ fn cartesian_join_diagnostic(input: &AnalysisInput, config: &Config) -> Option<D
         rule_id: RuleId::PGP104,
         severity: Severity::Warning,
         title: "Possible Cartesian join".to_owned(),
-        message: "Relation occurrences form multiple disconnected predicate components."
-            .to_owned(),
+        message: "Relation occurrences form multiple disconnected predicate components.".to_owned(),
         evidence: DiagnosticEvidence::CartesianJoin {
             disconnected_groups,
             estimated_rows,
