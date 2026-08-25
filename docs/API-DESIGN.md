@@ -35,35 +35,19 @@ pub fn analyze(input: &AnalysisInput, config: &Config) -> Report;
 
 The model/config/report contracts exist today; the complete rule-evaluation facade is still planned.
 
-### `pgpreflight-postgres` — parser API implemented
+### `pgpreflight-postgres` — parser and planning API implemented
 
-Current public entry point:
+Current public surfaces include `parse_and_validate`, `ValidatedStatement`, `SafeModePlanner`, `PlannedStatement`, `CheckError`, and `PlanningError`.
 
-```rust
-pub fn parse_and_validate(sql: &str) -> Result<ValidatedStatement, CheckError>;
-```
+`ValidatedStatement` exposes normalized `StatementFacts` through `facts()` but keeps the underlying `sqlparser-rs` `Statement` private to the crate. The planning adapter reuses the exact validated statement without making parser types part of the public compatibility surface.
 
-`ValidatedStatement` exposes normalized `StatementFacts` through `facts()` but keeps the underlying `sqlparser-rs` `Statement` private to the crate. This allows the future planning adapter to reuse the exact validated AST without making parser types part of the public compatibility surface.
+`SafeModePlanner` performs read-only planning with transaction-local timeouts and plain `EXPLAIN`. `PlannedStatement::analysis_input()` exposes only normalized `AnalysisInput`: transient raw plan JSON and expression payloads do not cross the public boundary.
 
-`CheckError` currently classifies:
-
-- SQL parse failure;
-- multiple statements;
-- unsupported statement type/form;
-- explicitly unsafe constructs with a stable non-sensitive kind label.
-
-Errors intentionally do not echo the original SQL.
+`PlanningError` classifies connection, transaction, configuration, timeout, planning, invalid-plan, catalog, and rollback failures without surfacing raw driver messages.
 
 ## 3. Planned connected facade
 
-A future v0.1 facade may have a shape equivalent in purpose to:
-
-```rust
-let checker = PgPreflight::connect(database_url).await?;
-let report = checker.check_sql(sql, &config).await?;
-```
-
-This is a **design direction, not an implemented API commitment**. Exact names/signatures may change before the adapter issue lands.
+A higher-level v0.1 facade that combines validation, planning, rule evaluation, and report construction remains planned. Exact names and signatures are not an API commitment before that slice lands.
 
 Whatever facade is chosen must preserve these boundaries:
 
@@ -97,7 +81,7 @@ Avoid exposing merely because it is present in a verbose plan:
 - credential-bearing connection data;
 - arbitrary driver error payloads.
 
-Unknown plan nodes may use a stable `Other(String)` representation. Missing evidence should remain missing rather than being guessed.
+Unknown plan nodes use the stable `Other(String)` representation. Missing evidence remains missing rather than being guessed.
 
 ## 5. Configuration API
 
