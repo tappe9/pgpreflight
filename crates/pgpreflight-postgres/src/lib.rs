@@ -2,9 +2,11 @@
 
 mod error;
 mod parser;
+mod planning;
 mod validation;
 
 pub use error::CheckError;
+pub use planning::{PlannedStatement, PlanningError, SafeModePlanner};
 pub use validation::ValidatedStatement;
 
 pub fn parse_and_validate(sql: &str) -> Result<ValidatedStatement, CheckError> {
