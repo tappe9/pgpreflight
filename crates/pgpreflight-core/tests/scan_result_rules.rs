@@ -280,10 +280,7 @@ fn pgp103_skips_update_and_delete_returning() {
             Some("widgets"),
             Vec::new(),
         );
-        let report = analyze(
-            &analysis_input(kind, true, root, Vec::new()),
-            &config,
-        );
+        let report = analyze(&analysis_input(kind, true, root, Vec::new()), &config);
 
         assert_eq!(report.status, ReportStatus::Clean);
         assert!(report.diagnostics.is_empty());
