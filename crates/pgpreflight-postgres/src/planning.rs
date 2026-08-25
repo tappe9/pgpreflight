@@ -1,11 +1,13 @@
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
-use pgpreflight_core::PostgresConfig;
+use pgpreflight_core::{
+    AnalysisInput, NormalizedPlan, PlanNode, PostgresConfig, RelationRef, RelationStats,
+};
 use serde_json::Value;
 use thiserror::Error;
 use tokio_postgres::{Client, NoTls, Transaction, error::SqlState};
 
-use crate::ValidatedStatement;
+use crate::{ValidatedStatement, normalization::normalize_plan};
 
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
 pub enum PlanningError {
@@ -21,15 +23,20 @@ pub enum PlanningError {
     Planning,
     #[error("PostgreSQL returned an invalid plan response")]
     InvalidPlan,
+    #[error("PostgreSQL catalog evidence failed")]
+    Catalog,
     #[error("Safe Mode rollback failed")]
     Rollback,
 }
 
 pub struct PlannedStatement {
-    // Issue #5 consumes this transient raw JSON during normalization. Keeping it
-    // crate-private prevents callers from depending on PostgreSQL's raw shape.
-    #[allow(dead_code)]
-    pub(crate) raw_plan: Value,
+    analysis: AnalysisInput,
+}
+
+impl PlannedStatement {
+    pub fn analysis_input(&self) -> &AnalysisInput {
+        &self.analysis
+    }
 }
 
 impl fmt::Debug for PlannedStatement {
@@ -94,21 +101,122 @@ impl SafeModePlanner {
             Ok(raw_plan) => raw_plan,
             Err(_) => return rollback_error(transaction, PlanningError::InvalidPlan).await,
         };
+        let normalized_plan = match normalize_plan(&raw_plan, statement.facts().kind) {
+            Ok(plan) => plan,
+            Err(_) => return rollback_error(transaction, PlanningError::InvalidPlan).await,
+        };
+        let relations = match load_relation_stats(&transaction, &normalized_plan).await {
+            Ok(relations) => relations,
+            Err(error) => return rollback_error(transaction, error).await,
+        };
+        let analysis = AnalysisInput {
+            statement: statement.facts().clone(),
+            plan: normalized_plan,
+            relations,
+        };
 
         transaction
             .rollback()
             .await
             .map_err(|_| PlanningError::Rollback)?;
 
-        Ok(PlannedStatement { raw_plan })
+        Ok(PlannedStatement { analysis })
     }
 }
 
-fn classify_planning_error(error: &tokio_postgres::Error) -> PlanningError {
-    match error.as_db_error().map(|error| error.code()) {
-        Some(&SqlState::QUERY_CANCELED | &SqlState::LOCK_NOT_AVAILABLE) => PlanningError::Timeout,
-        _ => PlanningError::Planning,
+async fn load_relation_stats(
+    transaction: &Transaction<'_>,
+    plan: &NormalizedPlan,
+) -> Result<Vec<RelationStats>, PlanningError> {
+    const RELATION_STATS_SQL: &str = "\
+        SELECT c.reltuples::float8, c.relpages::bigint \
+        FROM pg_catalog.pg_class AS c \
+        JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace \
+        WHERE n.nspname = $1 AND c.relname = $2";
+
+    let relations = collect_relations(plan);
+    let mut stats = Vec::with_capacity(relations.len());
+
+    for relation in relations {
+        let row = transaction
+            .query_opt(RELATION_STATS_SQL, &[&relation.schema, &relation.name])
+            .await
+            .map_err(|error| classify_catalog_error(&error))?;
+
+        let (estimated_live_rows, pages) = match row {
+            Some(row) => {
+                let rows = row
+                    .try_get::<_, f64>(0)
+                    .map_err(|_| PlanningError::Catalog)?;
+                let pages = row
+                    .try_get::<_, i64>(1)
+                    .map_err(|_| PlanningError::Catalog)?;
+                (
+                    nonnegative_finite(rows),
+                    u64::try_from(pages).ok(),
+                )
+            }
+            None => (None, None),
+        };
+
+        stats.push(RelationStats {
+            relation,
+            estimated_live_rows,
+            pages,
+        });
     }
+
+    Ok(stats)
+}
+
+fn collect_relations(plan: &NormalizedPlan) -> Vec<RelationRef> {
+    let mut seen = BTreeSet::new();
+    let mut relations = Vec::new();
+    collect_node_relations(&plan.root, &mut seen, &mut relations);
+    relations
+}
+
+fn collect_node_relations(
+    node: &PlanNode,
+    seen: &mut BTreeSet<RelationRef>,
+    relations: &mut Vec<RelationRef>,
+) {
+    if let Some(relation) = &node.relation
+        && seen.insert(relation.clone())
+    {
+        relations.push(relation.clone());
+    }
+
+    for child in &node.children {
+        collect_node_relations(child, seen, relations);
+    }
+}
+
+fn nonnegative_finite(value: f64) -> Option<f64> {
+    (value.is_finite() && value >= 0.0).then_some(value)
+}
+
+fn classify_planning_error(error: &tokio_postgres::Error) -> PlanningError {
+    if is_timeout(error) {
+        PlanningError::Timeout
+    } else {
+        PlanningError::Planning
+    }
+}
+
+fn classify_catalog_error(error: &tokio_postgres::Error) -> PlanningError {
+    if is_timeout(error) {
+        PlanningError::Timeout
+    } else {
+        PlanningError::Catalog
+    }
+}
+
+fn is_timeout(error: &tokio_postgres::Error) -> bool {
+    matches!(
+        error.as_db_error().map(|error| error.code()),
+        Some(&SqlState::QUERY_CANCELED | &SqlState::LOCK_NOT_AVAILABLE)
+    )
 }
 
 async fn rollback_error(
