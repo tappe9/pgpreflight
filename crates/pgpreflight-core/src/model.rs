@@ -23,6 +23,29 @@ impl RelationRef {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct RelationIdentity {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+    pub name: String,
+}
+
+impl RelationIdentity {
+    pub fn qualified(schema: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            schema: Some(schema.into()),
+            name: name.into(),
+        }
+    }
+
+    pub fn unqualified(name: impl Into<String>) -> Self {
+        Self {
+            schema: None,
+            name: name.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct JoinGraph {
     pub relation_occurrences: Vec<RelationOccurrence>,
@@ -30,9 +53,9 @@ pub struct JoinGraph {
     pub indeterminate: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RelationOccurrence {
-    pub relation: RelationRef,
+    pub relation: RelationIdentity,
     pub alias: Option<String>,
 }
 

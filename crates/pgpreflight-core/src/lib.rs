@@ -14,8 +14,8 @@ pub use diagnostic::{
     ReportStatus, ReportSummary, RuleId, Severity, StatementSummary, ToolInfo,
 };
 pub use model::{
-    AnalysisInput, JoinEdge, JoinGraph, NormalizedPlan, PlanNode, PlanNodeKind, RelationOccurrence,
-    RelationRef, RelationStats, StatementFacts, StatementKind,
+    AnalysisInput, JoinEdge, JoinGraph, NormalizedPlan, PlanNode, PlanNodeKind, RelationIdentity,
+    RelationOccurrence, RelationRef, RelationStats, StatementFacts, StatementKind,
 };
 pub use rules::analyze;
 

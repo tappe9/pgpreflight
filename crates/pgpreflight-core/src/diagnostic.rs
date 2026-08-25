@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{RelationRef, StatementKind};
+use crate::{RelationOccurrence, RelationRef, StatementKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum RuleId {
@@ -44,8 +44,9 @@ pub enum DiagnosticEvidence {
         estimated_result_rows: f64,
     },
     CartesianJoin {
-        disconnected_groups: Vec<Vec<RelationRef>>,
-        estimated_result_rows: Option<f64>,
+        disconnected_groups: Vec<Vec<RelationOccurrence>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        estimated_rows: Option<f64>,
     },
 }
 
