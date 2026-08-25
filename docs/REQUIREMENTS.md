@@ -99,7 +99,7 @@ The CLI must support human-readable text and schema-versioned JSON reports.
 Machine output must conform to `schemas/report-v1.schema.json` while `schema_version` is `1`.
 
 ### FR-013 — Config discovery
-Planned discovery order:
+Discovery order:
 
 1. explicit `--config` path;
 2. current directory;
@@ -109,7 +109,7 @@ Planned discovery order:
 The first file found is used; files are not merged.
 
 ### FR-014 — Database URL precedence
-Planned precedence:
+Precedence:
 
 1. `--database-url`;
 2. `PGPREFLIGHT_DATABASE_URL`;
@@ -192,7 +192,7 @@ The project must distinguish targets from versions/platforms actually covered by
 
 ## 9. Current implementation checkpoint
 
-Implemented on `main` through the PGP104 rule-engine slice:
+Implemented on `main` through the end-user CLI slice:
 
 - workspace/MSRV/license/CI foundation;
 - strict core config and defaults;
@@ -203,6 +203,7 @@ Implemented on `main` through the PGP104 rule-engine slice:
 - raw plan normalization into stable core evidence;
 - PostgreSQL catalog relation statistics with missing values preserved as unknown;
 - deterministic core evaluation for PGP001–PGP104, including inclusive numeric boundaries, missing-evidence skips, independent self-join scan evaluation, SELECT-root result estimates, and disconnected relation-occurrence analysis;
-- conservative validated-AST join graphs for direct `SELECT`, `UPDATE ... FROM`, and `DELETE ... USING`, with indeterminate ownership skipped and safe evidence only.
+- conservative validated-AST join graphs for direct `SELECT`, `UPDATE ... FROM`, and `DELETE ... USING`, with indeterminate ownership skipped and safe evidence only;
+- `pgpreflight check <INPUT>` with file/stdin input, strict config and database URL resolution, text/schema-v1 JSON rendering, `--fail-on`, fixed exit codes, sanitized failures, and connected non-execution coverage.
 
-The end-user CLI, PostgreSQL 14–18 compatibility matrix, and release packaging remain future v0.1 slices.
+The PostgreSQL 14–18 compatibility matrix and release packaging remain future v0.1 slices.

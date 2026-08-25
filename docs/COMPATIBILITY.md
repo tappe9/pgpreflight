@@ -35,7 +35,7 @@ The current cross-platform jobs prove compilation on GitHub-hosted macOS/Windows
 
 v0.1 target: PostgreSQL **14, 15, 16, 17, and 18**.
 
-This is currently a **target, not a completed compatibility claim**. The PostgreSQL planning adapter has not landed yet, so there is no server-version integration matrix on `main` today.
+This remains a **target, not a completed compatibility claim**. The PostgreSQL Safe Mode planning adapter and connected CLI planning path are implemented, and the current quality job exercises them against PostgreSQL 18. A PostgreSQL 14–18 server-version integration matrix is not yet present and remains part of Issue #10.
 
 Before v0.1 release, integration CI should exercise every targeted major version with semantic assertions covering:
 
