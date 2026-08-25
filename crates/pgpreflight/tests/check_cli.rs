@@ -369,7 +369,8 @@ fn fail_on_warning_changes_only_the_diagnostic_exit_status() {
         return;
     };
     let sandbox = Sandbox::new("fail-on");
-    let sql = b"SELECT * FROM pg_catalog.pg_class AS c CROSS JOIN pg_catalog.pg_namespace AS n LIMIT 1;";
+    let sql =
+        b"SELECT * FROM pg_catalog.pg_class AS c CROSS JOIN pg_catalog.pg_namespace AS n LIMIT 1;";
 
     let error_threshold = run_cli(
         sandbox.path(),
@@ -453,10 +454,7 @@ fn connected_update_reports_an_error_without_modifying_the_table() {
         &format!("SELECT active FROM public.{table} WHERE id = 1")
     ));
 
-    execute_sql(
-        database_url.as_str(),
-        &format!("DROP TABLE public.{table}"),
-    );
+    execute_sql(database_url.as_str(), &format!("DROP TABLE public.{table}"));
 }
 
 #[test]
@@ -479,12 +477,7 @@ fn text_clean_report_uses_stdout() {
     let sandbox = Sandbox::new("text-clean");
     let output = run_cli(
         sandbox.path(),
-        &[
-            "check",
-            "-",
-            "--database-url",
-            database_url.as_str(),
-        ],
+        &["check", "-", "--database-url", database_url.as_str()],
         b"SELECT 1;",
         &[],
     );
