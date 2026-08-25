@@ -1,0 +1,102 @@
+# Contributing to pgpreflight
+
+Thank you for considering a contribution.
+
+pgpreflight is pre-1.0 software with a deliberately conservative PostgreSQL safety boundary. Correctness, fail-closed behavior, and data minimization matter more than accepting the widest possible SQL surface.
+
+## Development principles
+
+Contributions should preserve these rules:
+
+- keep `pgpreflight-core` independent from PostgreSQL clients, parser AST types, async runtimes, and CLI concerns;
+- treat `sqlparser-rs` as a safety/admission parser, not PostgreSQL's semantic authority;
+- reject unsupported or ambiguous SQL rather than bypassing validation;
+- never introduce an `EXPLAIN ANALYZE` path for target statements;
+- keep target DML inside the intended plain-`EXPLAIN` planning boundary;
+- do not retain SQL literals, complete credential-bearing URLs, or raw verbose plans in stable public models;
+- add focused tests before or with behavior changes;
+- prefer small PRs with one responsibility and clear acceptance criteria.
+
+## TDD workflow
+
+Behavior changes should follow Red → Green → Refactor:
+
+1. add the smallest test or corpus fixture that defines the required behavior;
+2. run it and confirm the expected failure;
+3. implement the minimum behavior;
+4. run the focused test to green;
+5. refactor without changing the contract;
+6. run the complete relevant quality gates.
+
+For a bug discovered by integration or fuzz-style testing, first preserve a deterministic regression before fixing it.
+
+## SQL-policy changes
+
+A PR that changes accepted/rejected SQL should explain:
+
+- the statement/query shape;
+- why it is safe to admit or why it must be rejected;
+- how nested queries/CTEs are handled;
+- whether the change affects `StatementFacts`;
+- corpus or unit tests covering the decision;
+- documentation updates in `docs/SQL-SUPPORT.md` when the public policy changes.
+
+Do not accept a construct solely because `sqlparser-rs` can parse it. pgpreflight must be able to justify the safety policy for the entire relevant query shape.
+
+## PostgreSQL adapter changes
+
+Adapter work should preserve the Safe Mode contract in [docs/SAFETY.md](docs/SAFETY.md). Integration tests should prove semantic invariants such as read-only state and non-execution rather than depending on exact planner cost numbers.
+
+Version-specific PostgreSQL behavior should be tested across the supported server matrix when practical.
+
+## Public API and report changes
+
+Before v1.0 the Rust API may evolve, but breaking changes should still be deliberate.
+
+When changing public models:
+
+- keep driver/parser internals out of `pgpreflight-core` public types;
+- preserve typed evidence instead of forcing consumers to parse human messages;
+- review `schemas/report-v1.schema.json` and [docs/JSON-REPORT.md](docs/JSON-REPORT.md);
+- do not change the meaning/type of an existing schema-v1 field casually.
+
+## Documentation sources of truth
+
+Durable project documentation lives in README, root project docs, and `docs/*.md`.
+
+`docs/superpowers/` is reserved for local development-agent scratch specifications/plans and is intentionally ignored by Git. Do not link to it from Issues, PR descriptions, or durable project documentation.
+
+## Rust version and quality gates
+
+The workspace currently targets Rust **1.85.0** and Rust 2024 edition.
+
+Current CI-equivalent checks include:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+cargo check --workspace --all-targets
+```
+
+Run the full set relevant to your change. PostgreSQL integration gates will be added as the adapter and compatibility issues land.
+
+## Pull requests
+
+A good PR description should state:
+
+- scope and explicit non-goals;
+- tests/fixtures added or changed;
+- safety implications;
+- public API/schema/documentation impact;
+- verification commands executed.
+
+Avoid mixing unrelated refactors with a safety- or semantics-sensitive change.
+
+## Contribution licensing
+
+pgpreflight is licensed under **MIT OR Apache-2.0**. Unless explicitly stated otherwise, contributions intentionally submitted for inclusion are provided under the same dual-license terms.
+
+## Security issues
+
+Do not open a public issue containing sensitive vulnerability details. Follow [SECURITY.md](SECURITY.md).
