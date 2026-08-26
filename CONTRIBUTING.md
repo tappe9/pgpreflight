@@ -47,7 +47,7 @@ Do not accept a construct solely because `sqlparser-rs` can parse it. pgprefligh
 
 Adapter work should preserve the Safe Mode contract in [docs/SAFETY.md](docs/SAFETY.md). Integration tests should prove semantic invariants such as read-only state and non-execution rather than depending on exact planner cost numbers.
 
-Version-specific PostgreSQL behavior should be tested across the supported server matrix when practical.
+Version-specific PostgreSQL behavior must be checked against the PostgreSQL 14–18 matrix. Add semantic assertions that tolerate legitimate planner estimate/cost differences, and set `PGPREFLIGHT_TEST_POSTGRES_MAJOR` when reproducing a particular matrix entry locally.
 
 ## Public API and report changes
 
@@ -58,7 +58,8 @@ When changing public models:
 - keep driver/parser internals out of `pgpreflight-core` public types;
 - preserve typed evidence instead of forcing consumers to parse human messages;
 - review `schemas/report-v1.schema.json` and [docs/JSON-REPORT.md](docs/JSON-REPORT.md);
-- do not change the meaning/type of an existing schema-v1 field casually.
+- do not change the meaning/type of an existing schema-v1 field casually;
+- validate representative clean, warning, error-diagnostic, and tool-failure reports against the committed schema.
 
 ## Documentation sources of truth
 
@@ -68,18 +69,21 @@ Durable project documentation lives in README, root project docs, and `docs/*.md
 
 ## Rust version and quality gates
 
-The workspace currently targets Rust **1.85.0** and Rust 2024 edition.
+The workspace targets Rust **1.85.0** and Rust 2024 edition.
 
-Current CI-equivalent checks include:
+Run the full set relevant to your change:
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
-cargo check --workspace --all-targets
+cargo +stable fmt --all -- --check
+cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
+cargo +1.85.0 check --workspace --all-targets --all-features
+cargo +stable build --workspace --all-targets --all-features
+cargo +stable test --workspace --all-features
 ```
 
-Run the full set relevant to your change. PostgreSQL integration gates will be added as the adapter and compatibility issues land.
+Database-backed integration tests require `PGPREFLIGHT_TEST_DATABASE_URL`. CI runs the complete workspace suite separately against PostgreSQL 14, 15, 16, 17, and 18. The non-database build/test matrix runs on Linux, macOS, and Windows without that environment variable.
+
+The stable branch-protection target is `CI / required`, which aggregates the quality, MSRV, cross-platform, and PostgreSQL matrices.
 
 ## Pull requests
 

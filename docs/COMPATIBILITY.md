@@ -1,52 +1,76 @@
 # Compatibility
 
-Status: **v0.1 target with partial CI verification**
+Status: **v0.1 compatibility contracts verified in CI; release packaging remains pending**
 
-This document separates intended support from what the repository currently verifies automatically.
+This document separates source/test compatibility from release-artifact support.
 
 ## Rust
 
-Workspace metadata currently declares:
+Workspace metadata declares:
 
 - edition: Rust 2024;
 - minimum Rust version: **1.85**.
 
-Current GitHub Actions install Rust 1.85.0 for quality and cross-platform jobs.
+The dedicated `msrv` job installs Rust 1.85.0 and runs:
+
+```bash
+cargo +1.85.0 check --workspace --all-targets --all-features
+```
+
+Formatting, Clippy, and the non-database platform matrix use the current stable toolchain separately. This keeps the declared MSRV explicit while still detecting incompatibilities with current Rust tooling.
 
 Raising the MSRV is a compatibility change and should be explicit rather than occurring accidentally through a dependency update.
 
 ## Operating systems
 
-### Current CI verification
+### Source and non-database CI verification
 
-- Ubuntu: formatting, Clippy, and full workspace tests with all features;
-- macOS: workspace/all-targets `cargo check`;
-- Windows: workspace/all-targets `cargo check`.
+The `cross-platform` matrix runs on GitHub-hosted:
 
-### v0.1 target
+- Ubuntu;
+- macOS;
+- Windows.
+
+Every platform entry performs both:
+
+```bash
+cargo +stable build --workspace --all-targets --all-features
+cargo +stable test --workspace --all-features
+```
+
+Database-backed tests skip themselves when `PGPREFLIGHT_TEST_DATABASE_URL` is absent, so this matrix fixes build and non-database behavior across all three operating-system families.
+
+### v0.1 release-artifact target
 
 - Linux x86_64;
 - macOS x86_64 and aarch64;
 - Windows x86_64.
 
-The current cross-platform jobs prove compilation on GitHub-hosted macOS/Windows runners; they do not yet represent final release-artifact coverage.
+The source/test matrix does not by itself claim that final release archives exist for these targets. Tagged artifact production and checksum verification belong to Issue #11.
 
 ## PostgreSQL
 
-v0.1 target: PostgreSQL **14, 15, 16, 17, and 18**.
+v0.1 supports PostgreSQL **14, 15, 16, 17, and 18** through a dedicated server matrix.
 
-This remains a **target, not a completed compatibility claim**. The PostgreSQL Safe Mode planning adapter and connected CLI planning path are implemented, and the current quality job exercises them against PostgreSQL 18. A PostgreSQL 14–18 server-version integration matrix is not yet present and remains part of Issue #10.
+Each matrix entry:
 
-Before v0.1 release, integration CI should exercise every targeted major version with semantic assertions covering:
+- boots the matching PostgreSQL major version;
+- exposes the expected major through `PGPREFLIGHT_TEST_POSTGRES_MAJOR`;
+- verifies the actual server major from `server_version_num`;
+- runs the complete workspace test suite with database integration enabled.
 
-- read-only Safe Mode;
-- plain `EXPLAIN` behavior;
-- representative plan normalization;
-- catalog-statistics access;
-- sanitized failure behavior;
-- supported SQL planning.
+The PostgreSQL-backed assertions are semantic rather than snapshot-based. Coverage verifies the Safe Mode transaction, target-DML non-execution, representative normalized plan kinds and relation identity, conservative affected-row evidence, catalog statistics, supported SQL planning, and sanitized failures. It deliberately does not lock exact startup cost, total cost, row-estimate, or page-count snapshots that may vary legitimately between PostgreSQL versions or environments.
 
-Tests should avoid exact cost snapshots because planner costs/statistics can vary legitimately between versions and environments.
+## Stable CI checks
+
+The workflow exposes stable leaf job names for diagnosis:
+
+- `CI / quality`;
+- `CI / msrv`;
+- `CI / cross-platform / non-db (<runner>)`;
+- `CI / postgresql / <major>`.
+
+Branch protection should require the stable aggregate check **`CI / required`**. That job depends on every leaf matrix and fails unless all quality, MSRV, platform, and PostgreSQL jobs succeed. Requiring the aggregate avoids changing branch-protection settings whenever a matrix entry is added or renamed.
 
 ## SQL parser compatibility
 

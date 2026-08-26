@@ -1,6 +1,6 @@
 # Safety Model
 
-Status: **v0.1 contract; parser gate, database Safe Mode, and CLI redaction implemented**
+Status: **v0.1 parser gate, database Safe Mode, redaction, and PostgreSQL 14–18 safety coverage implemented**
 
 pgpreflight is designed to reduce the chance of accidentally executing risky DML while obtaining PostgreSQL planner evidence. It does not claim that planning arbitrary PostgreSQL code is side-effect free.
 
@@ -112,18 +112,23 @@ Stable public models contain only normalized non-sensitive evidence required for
 
 ## 8. Error redaction
 
-Public errors classify failures without echoing sensitive source material. SQL parse errors expose a sanitized fixed message rather than parser-library details that may contain the source query, and the planning adapter maps connection, timeout, planning, catalog, and rollback failures to stable categories without surfacing raw driver messages.
+Public errors classify failures without echoing sensitive source material. SQL parse errors expose a fixed sanitized message rather than parser-library details that may contain the source query, and the planning adapter maps connection, timeout, planning, catalog, and rollback failures to stable categories without surfacing raw driver messages.
 
-The CLI preserves this boundary by rendering only stable report fields and fixed sanitized tool-failure messages. Integration tests assert that SQL literal and credential markers do not appear in structured output.
+The CLI preserves this boundary for both text and schema-v1 JSON. Process-level regression tests place conspicuous synthetic SQL-literal and credential markers in inputs, then verify that they are absent from stdout, stderr, and structured failure fields. Separate public-error tests verify both `Display` and `Debug` formatting and reject representative raw parser and driver detail strings.
 
 ## 9. Safe Mode validation coverage
 
-Integration coverage for the adapter proves at least:
+The PostgreSQL 14–18 matrix verifies the same semantic safety contract against every supported major. Each job confirms the actual server major before exercising the adapter and CLI paths.
+
+Integration coverage proves at least:
 
 - an `UPDATE` can be planned without changing the target row;
 - `transaction_read_only` is `on` during planning;
+- statement and lock timeouts are active during planning;
 - timeout categories are mapped without leaking test secret markers;
 - no `EXPLAIN ANALYZE` construction exists in the production path;
-- rollback behavior is exercised.
+- success and recoverable-failure rollback behavior is exercised;
+- normalized statement kind, plan-node kind, relation identity, affected-row evidence, and catalog statistics remain meaningful;
+- normalized/public serialization excludes raw SQL literals and verbose-plan expression data.
 
-Plan-normalization integration coverage additionally checks semantic plan fields and catalog evidence without asserting exact PostgreSQL costs. CLI integration coverage exercises the connected planning path and verifies that a checked `UPDATE` is not executed.
+Assertions are intentionally semantic. Tests permit legitimate planner-cost and estimate differences across PostgreSQL majors and do not use exact cost snapshots.
