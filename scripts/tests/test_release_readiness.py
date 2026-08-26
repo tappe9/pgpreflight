@@ -24,6 +24,7 @@ REQUIRED_TARGETS = (
 class ReleaseReadinessContractTests(unittest.TestCase):
     def test_release_assets_exist(self) -> None:
         required_paths = [
+            ROOT / "Cargo.lock",
             ROOT / "CHANGELOG.md",
             ROOT / ".github" / "dependabot.yml",
             ROOT / ".github" / "workflows" / "release.yml",
@@ -133,12 +134,12 @@ class ReleaseReadinessContractTests(unittest.TestCase):
         self.assertIn("release-readiness:", workflow)
         self.assertIn("needs.release-readiness.result", workflow)
 
-        generate_index = workflow.index("cargo +stable generate-lockfile")
+        metadata_index = workflow.index("cargo +stable metadata --locked")
         publish_index = workflow.index("cargo +stable publish --dry-run --locked")
         core_index = workflow.index("-p pgpreflight-core", publish_index)
         postgres_index = workflow.index("-p pgpreflight-postgres", publish_index)
         cli_index = workflow.index("-p pgpreflight", postgres_index + 1)
-        self.assertLess(generate_index, publish_index)
+        self.assertLess(metadata_index, publish_index)
         self.assertLess(core_index, postgres_index)
         self.assertLess(postgres_index, cli_index)
 
