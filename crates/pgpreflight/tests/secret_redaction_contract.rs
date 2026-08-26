@@ -8,8 +8,7 @@ use std::{
 };
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-const SECRET_URL: &str =
-    "postgresql://user:credential-secret-marker@127.0.0.1:1/pgpreflight";
+const SECRET_URL: &str = "postgresql://user:credential-secret-marker@127.0.0.1:1/pgpreflight";
 
 struct Sandbox {
     path: PathBuf,

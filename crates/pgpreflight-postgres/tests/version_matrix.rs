@@ -56,9 +56,7 @@ async fn supported_postgresql_major_preserves_semantic_safe_mode_contracts() {
         .await
         .expect("prepare version probe table");
 
-    let sql = format!(
-        "UPDATE public.{table} SET payload = 'version-secret-marker' WHERE id = 1"
-    );
+    let sql = format!("UPDATE public.{table} SET payload = 'version-secret-marker' WHERE id = 1");
     let statement = parse_and_validate(&sql).expect("version probe SQL should be supported");
     let mut planner = SafeModePlanner::connect(&database_url)
         .await
@@ -93,7 +91,10 @@ async fn supported_postgresql_major_preserves_semantic_safe_mode_contracts() {
     assert!(!serialized.contains("version-secret-marker"));
 
     let payload: String = admin
-        .query_one(&format!("SELECT payload FROM public.{table} WHERE id = 1"), &[])
+        .query_one(
+            &format!("SELECT payload FROM public.{table} WHERE id = 1"),
+            &[],
+        )
         .await
         .expect("query version probe row")
         .get(0);

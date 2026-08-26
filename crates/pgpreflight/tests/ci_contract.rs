@@ -20,7 +20,10 @@ fn exposes_stable_job_names_and_one_aggregate_required_check() {
             "\n  postgresql:\n    name: postgresql / ${{ matrix.postgresql }}\n",
             "the PostgreSQL job name",
         ),
-        ("\n  required:\n    name: required\n", "the aggregate required check"),
+        (
+            "\n  required:\n    name: required\n",
+            "the aggregate required check",
+        ),
     ] {
         assert_workflow_contains(expected, contract);
     }
@@ -29,7 +32,10 @@ fn exposes_stable_job_names_and_one_aggregate_required_check() {
         "    needs:\n      - quality\n      - msrv\n      - cross-platform\n      - postgresql\n",
         "the aggregate dependency list",
     );
-    assert_workflow_contains("    if: ${{ always() }}\n", "the aggregate always-run guard");
+    assert_workflow_contains(
+        "    if: ${{ always() }}\n",
+        "the aggregate always-run guard",
+    );
 }
 
 #[test]

@@ -30,8 +30,7 @@ fn parser_failures_have_fixed_public_formatting_without_raw_parser_details() {
 
 #[tokio::test(flavor = "current_thread")]
 async fn driver_failures_have_fixed_public_formatting_without_credentials_or_driver_details() {
-    let database_url =
-        "postgresql://user:credential-secret-marker@127.0.0.1:1/pgpreflight";
+    let database_url = "postgresql://user:credential-secret-marker@127.0.0.1:1/pgpreflight";
     let error = match SafeModePlanner::connect(database_url).await {
         Ok(_) => panic!("connection unexpectedly succeeded"),
         Err(error) => error,
