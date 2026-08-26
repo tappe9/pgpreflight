@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import importlib.util
+import tempfile
 import tomllib
 import unittest
 from pathlib import Path
@@ -74,6 +77,32 @@ class ReleaseReadinessContractTests(unittest.TestCase):
         self.assertIn("SHA256SUMS", workflow)
         self.assertIn("gh release create", workflow)
 
+    def test_package_script_uses_stable_names_and_sha256_sidecars(self) -> None:
+        script_path = ROOT / "scripts" / "package_release.py"
+        self.assertTrue(script_path.is_file(), "scripts/package_release.py is required")
+        spec = importlib.util.spec_from_file_location("package_release", script_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        self.assertEqual(
+            module.archive_filename("0.1.0", "x86_64-unknown-linux-gnu", "tar.gz"),
+            "pgpreflight-v0.1.0-x86_64-unknown-linux-gnu.tar.gz",
+        )
+        self.assertEqual(
+            module.archive_filename("0.1.0", "x86_64-pc-windows-msvc", "zip"),
+            "pgpreflight-v0.1.0-x86_64-pc-windows-msvc.zip",
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            archive = Path(temporary_directory) / "artifact.tar.gz"
+            archive.write_bytes(b"pgpreflight release fixture")
+            sidecar = module.write_sha256(archive)
+            expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+            self.assertEqual(sidecar.name, "artifact.tar.gz.sha256")
+            self.assertEqual(sidecar.read_text(encoding="utf-8"), f"{expected}  {archive.name}\n")
+
     def test_public_docs_describe_the_implemented_release_candidate(self) -> None:
         stale_markers = {
             "README.md": (
@@ -99,10 +128,19 @@ class ReleaseReadinessContractTests(unittest.TestCase):
         self.assertIn("[x] **Issue #11", roadmap)
         self.assertIn("Status: **release-ready on `main`; not released**", roadmap)
 
-    def test_required_ci_aggregates_release_readiness(self) -> None:
+    def test_required_ci_aggregates_ordered_publish_dry_run(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn("release-readiness:", workflow)
         self.assertIn("needs.release-readiness.result", workflow)
+
+        generate_index = workflow.index("cargo +stable generate-lockfile")
+        publish_index = workflow.index("cargo +stable publish --dry-run --locked")
+        core_index = workflow.index("-p pgpreflight-core", publish_index)
+        postgres_index = workflow.index("-p pgpreflight-postgres", publish_index)
+        cli_index = workflow.index("-p pgpreflight", postgres_index + 1)
+        self.assertLess(generate_index, publish_index)
+        self.assertLess(core_index, postgres_index)
+        self.assertLess(postgres_index, cli_index)
 
 
 if __name__ == "__main__":
