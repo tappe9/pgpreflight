@@ -89,27 +89,19 @@ jobs:
   release-readiness:
     name: release-readiness
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: issue-11-v0.1-release-readiness
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
       - name: Generate the workspace lockfile for release preparation
         run: cargo +stable generate-lockfile
-      - name: Commit the generated lockfile to the isolated feature branch
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Cargo.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "build: add Cargo.lock for reproducible releases"
-            git push origin HEAD:issue-11-v0.1-release-readiness
-          fi
+      - name: Preserve the generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-11-cargo-lock
+          path: Cargo.lock
+          retention-days: 1
       - name: Run release-readiness contract tests
         run: python3 -m unittest discover -s scripts/tests -v
 
