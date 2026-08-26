@@ -1,9 +1,22 @@
 const CI_WORKFLOW: &str = include_str!("../../../.github/workflows/ci.yml");
 
+fn normalize_line_endings(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 fn assert_workflow_contains(expected: &str, contract: &str) {
+    let workflow = normalize_line_endings(CI_WORKFLOW);
     assert!(
-        CI_WORKFLOW.contains(expected),
+        workflow.contains(expected),
         "CI workflow does not satisfy {contract}; missing:\n{expected}"
+    );
+}
+
+#[test]
+fn normalizes_windows_checkout_line_endings_before_matching_contracts() {
+    assert_eq!(
+        normalize_line_endings("jobs:\r\n  quality:\r\n"),
+        "jobs:\n  quality:\n"
     );
 }
 
