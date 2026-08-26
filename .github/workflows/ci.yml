@@ -86,6 +86,14 @@ jobs:
           toolchain: 1.85.0
       - run: cargo +1.85.0 test --workspace --all-features
 
+  release-readiness:
+    name: release-readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run release-readiness contract tests
+        run: python3 -m unittest discover -s scripts/tests -v
+
   required:
     name: required
     if: ${{ always() }}
@@ -94,6 +102,7 @@ jobs:
       - msrv
       - cross-platform
       - postgresql
+      - release-readiness
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs
@@ -103,3 +112,4 @@ jobs:
           test "${{ needs.msrv.result }}" = "success"
           test "${{ needs.cross-platform.result }}" = "success"
           test "${{ needs.postgresql.result }}" = "success"
+          test "${{ needs.release-readiness.result }}" = "success"
