@@ -1,6 +1,6 @@
 # JSON Report Contract
 
-Status: **schema v1, typed report model, and CLI emission implemented**
+Status: **schema v1, typed report model, CLI emission, and full variant validation implemented**
 
 pgpreflight uses an explicit report schema version so automation can depend on a documented machine boundary independently of the pre-1.0 Rust API.
 
@@ -74,7 +74,7 @@ The `--format json` behavior is:
 - no ANSI escapes are emitted;
 - process exit status still follows the CLI failure/`--fail-on` policy.
 
-CLI integration tests cover clean, warning, error-diagnostic, and structured tool-failure stream behavior.
+CLI integration tests cover clean, warning, error-diagnostic, and structured tool-failure stream behavior. Redaction regressions additionally verify that SQL literals, credential-bearing URLs, and raw parser/driver details do not enter either stream or the structured failure object.
 
 ## 6. Schema-v1 compatibility policy
 
@@ -92,4 +92,4 @@ A change that requires consumers to reinterpret existing fields should use a new
 
 The JSON Schema is the machine-readable source of truth for structural validation. This document explains semantics but should not duplicate every schema constraint.
 
-Contract tests should validate representative clean, warning, error-diagnostic, and tool-failure objects against the committed schema before v0.1 release.
+Contract tests validate representative `clean`, `warnings`, `errors`, and `failed` report objects against the committed schema-v1 file. This fixes all four top-level status variants as an executable compatibility boundary.

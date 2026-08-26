@@ -38,7 +38,7 @@ Security-relevant invariants include:
 - raw verbose plans are treated as sensitive transient data;
 - malformed/unsupported SQL returns typed sanitized errors rather than panics.
 
-The parser/validation portion of this model is implemented today. Database Safe Mode and end-to-end redaction behavior remain v0.1 work and must not be assumed complete before their corresponding issues land.
+The parser gate, database Safe Mode, normalized evidence boundary, and end-to-end CLI redaction are implemented. CI exercises the database safety contract across PostgreSQL 14–18 and uses explicit synthetic-secret regressions to verify stdout, stderr, schema-v1 failure fields, and public `Display`/`Debug` error formatting.
 
 ## Known trust boundary
 

@@ -62,27 +62,32 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - `--fail-on error|warning` and fixed clean/diagnostic/tool-failure exit codes;
   - sanitized parser/driver/tool failures without SQL literal or credential-bearing URL leakage;
   - process integration coverage for streams, exit codes, resolution precedence, redaction, and connected non-execution.
+- [x] **Issue #10 — compatibility and safety matrix**
+  - PostgreSQL 14–18 matrix with actual-major checks and semantic Safe Mode/normalization/non-execution assertions;
+  - Linux/macOS/Windows all-target build and non-database test matrix;
+  - dedicated Rust 1.85.0 MSRV job;
+  - schema-v1 validation for clean, warning, error-diagnostic, and tool-failure reports;
+  - explicit SQL-literal, credential-bearing URL, raw parser-error, and raw driver-error leak regressions across streams and public formatting;
+  - stable `CI / required` aggregate check for branch protection.
 
 ### Remaining v0.1 implementation order
 
-1. **Issue #10 — compatibility and safety matrix**  
-   PostgreSQL 14–18 integration coverage, platform/MSRV checks, secret-leak regressions, schema coverage.
-2. **Issue #11 — v0.1 OSS release readiness**  
+1. **Issue #11 — v0.1 OSS release readiness**  
    packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
 
 ## v0.1 release criteria
 
 Before a v0.1.0 tag, the project should demonstrate:
 
-- no intentional `EXPLAIN ANALYZE` or target-DML execution path;
-- read-only Safe Mode behavior covered by integration tests;
-- PGP001–PGP104 semantics and threshold boundaries covered by tests;
-- JSON schema v1 validation for clean, diagnostic, and tool-failure reports;
-- PostgreSQL 14–18 semantic integration coverage;
-- Linux/macOS/Windows and MSRV checks;
-- explicit credential/SQL-literal leak regression coverage;
-- publish/release packaging checks;
-- README, safety, rules, API, JSON, compatibility, contributing, and security docs aligned with implementation.
+- [x] no intentional `EXPLAIN ANALYZE` or target-DML execution path;
+- [x] read-only Safe Mode behavior covered by integration tests;
+- [x] PGP001–PGP104 semantics and threshold boundaries covered by tests;
+- [x] JSON schema v1 validation for clean, warning, error-diagnostic, and tool-failure reports;
+- [x] PostgreSQL 14–18 semantic integration coverage;
+- [x] Linux/macOS/Windows and MSRV checks;
+- [x] explicit credential/SQL-literal/parser/driver leak regression coverage;
+- [ ] publish/release packaging checks;
+- [ ] README and final release documentation aligned with packaged behavior.
 
 ## After v0.1
 

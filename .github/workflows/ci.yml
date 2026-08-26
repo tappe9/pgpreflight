@@ -13,9 +13,58 @@ jobs:
   quality:
     name: quality
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - run: cargo +stable fmt --all -- --check
+      - run: cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
+
+  msrv:
+    name: msrv
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+      - run: cargo +1.85.0 check --workspace --all-targets --all-features
+
+  cross-platform:
+    name: cross-platform / non-db (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: cargo +stable build --workspace --all-targets --all-features
+      - run: cargo +stable test --workspace --all-features
+
+  postgresql:
+    name: postgresql / ${{ matrix.postgresql }}
+    strategy:
+      fail-fast: false
+      matrix:
+        postgresql:
+          - 14
+          - 15
+          - 16
+          - 17
+          - 18
+    runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18-alpine
+        image: postgres:${{ matrix.postgresql }}-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -29,28 +78,28 @@ jobs:
           --health-retries 5
     env:
       PGPREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/pgpreflight
+      PGPREFLIGHT_TEST_POSTGRES_MAJOR: ${{ matrix.postgresql }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.85.0
-          components: rustfmt, clippy
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - run: cargo test --workspace --all-features
+      - run: cargo +1.85.0 test --workspace --all-features
 
-  cross-platform:
-    name: cross-platform (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - macos-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+  required:
+    name: required
+    if: ${{ always() }}
+    needs:
+      - quality
+      - msrv
+      - cross-platform
+      - postgresql
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.85.0
-      - run: cargo check --workspace --all-targets
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          test "${{ needs.quality.result }}" = "success"
+          test "${{ needs.msrv.result }}" = "success"
+          test "${{ needs.cross-platform.result }}" = "success"
+          test "${{ needs.postgresql.result }}" = "success"
