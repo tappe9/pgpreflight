@@ -90,7 +90,18 @@ jobs:
     name: release-readiness
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Generate the workspace lockfile for release preparation
+        run: cargo +stable generate-lockfile
+      - name: Preserve the generated lockfile
+        uses: actions/upload-artifact@v7
+        with:
+          name: issue-11-cargo-lock
+          path: Cargo.lock
+          retention-days: 1
       - name: Run release-readiness contract tests
         run: python3 -m unittest discover -s scripts/tests -v
 
