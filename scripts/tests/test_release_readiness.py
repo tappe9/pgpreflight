@@ -64,6 +64,7 @@ class ReleaseReadinessContractTests(unittest.TestCase):
 
     def test_release_workflow_covers_native_targets_and_checksums(self) -> None:
         workflow_path = ROOT / ".github" / "workflows" / "release.yml"
+        self.assertTrue(workflow_path.is_file(), ".github/workflows/release.yml is required")
         workflow = workflow_path.read_text(encoding="utf-8")
 
         for target in REQUIRED_TARGETS:
