@@ -83,7 +83,7 @@ cargo +stable test --workspace --all-features
 
 Database-backed integration tests require `PGPREFLIGHT_TEST_DATABASE_URL`. CI runs the complete workspace suite separately against PostgreSQL 14, 15, 16, 17, and 18. The non-database build/test matrix runs on Linux, macOS, and Windows without that environment variable.
 
-The stable branch-protection target is `CI / required`, which aggregates the quality, MSRV, cross-platform, and PostgreSQL matrices.
+The stable branch-protection target is `CI / required`, which aggregates quality, MSRV, cross-platform, PostgreSQL, and release-readiness jobs.
 
 ## First crates.io release
 

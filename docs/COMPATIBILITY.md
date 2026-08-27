@@ -46,7 +46,7 @@ Database-backed tests skip themselves when `PGPREFLIGHT_TEST_DATABASE_URL` is ab
 - macOS x86_64 and aarch64;
 - Windows x86_64.
 
-The source/test matrix does not by itself claim that final release archives exist for these targets. Tagged artifact production and checksum verification belong to Issue #11.
+The tagged release workflow builds archives for all four targets and publishes per-archive SHA-256 sidecars plus a combined `SHA256SUMS` manifest. No v0.1.0 tag or release artifacts have been published yet.
 
 ## PostgreSQL
 
@@ -68,9 +68,10 @@ The workflow exposes stable leaf job names for diagnosis:
 - `CI / quality`;
 - `CI / msrv`;
 - `CI / cross-platform / non-db (<runner>)`;
-- `CI / postgresql / <major>`.
+- `CI / postgresql / <major>`;
+- `CI / release-readiness`.
 
-Branch protection should require the stable aggregate check **`CI / required`**. That job depends on every leaf matrix and fails unless all quality, MSRV, platform, and PostgreSQL jobs succeed. Requiring the aggregate avoids changing branch-protection settings whenever a matrix entry is added or renamed.
+Branch protection should require the stable aggregate check **`CI / required`**. That job depends on every leaf matrix and fails unless all quality, MSRV, platform, PostgreSQL, and release-readiness jobs succeed. Requiring the aggregate avoids changing branch-protection settings whenever a matrix entry is added or renamed.
 
 ## SQL parser compatibility
 
@@ -94,4 +95,4 @@ Public Rust APIs may evolve before v1.0. Changes should nevertheless be delibera
 
 ## Release packaging
 
-No v0.1.0 release artifacts are published yet. crates.io metadata, dry-run publication validation, tagged binary artifacts, and checksums belong to the release-readiness milestone.
+The three crates include crates.io metadata, per-crate README and license files, and committed package contents. CI validates locked metadata, performs a full `pgpreflight-core` publish dry-run, and prepares the two dependent packages with temporary local registry patches. The tagged release workflow builds the four supported native archives and SHA-256 checksums. No v0.1.0 crates, tag, or release artifacts have been published yet.
