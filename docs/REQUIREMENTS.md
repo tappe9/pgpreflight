@@ -1,8 +1,8 @@
 # pgpreflight v0.1 Requirements
 
-Status: **accepted v0.1 design contract; implementation in progress**
+Status: **accepted v0.1 contract; implemented and release-ready**
 
-This document defines the intended v0.1 product contract. It is not a claim that every requirement is already implemented. Current implementation status is summarized in [ROADMAP.md](../ROADMAP.md).
+This document defines the implemented v0.1 product contract. Release status is summarized in [ROADMAP.md](../ROADMAP.md).
 
 ## 1. Product definition
 
@@ -206,4 +206,4 @@ Implemented on `main` through the end-user CLI slice:
 - conservative validated-AST join graphs for direct `SELECT`, `UPDATE ... FROM`, and `DELETE ... USING`, with indeterminate ownership skipped and safe evidence only;
 - `pgpreflight check <INPUT>` with file/stdin input, strict config and database URL resolution, text/schema-v1 JSON rendering, `--fail-on`, fixed exit codes, sanitized failures, and connected non-execution coverage.
 
-The PostgreSQL 14–18 compatibility matrix and release packaging remain future v0.1 slices.
+The PostgreSQL 14–18 compatibility matrix, source-quality checks, and four-target release packaging are implemented in CI.

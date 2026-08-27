@@ -30,6 +30,7 @@ class ReleaseReadinessContractTests(unittest.TestCase):
             ROOT / ".github" / "workflows" / "release.yml",
             ROOT / "scripts" / "package_release.py",
             ROOT / "scripts" / "verify_release_readiness.py",
+            ROOT / "scripts" / "verify_release_version.py",
         ]
         for crate in CRATES:
             crate_root = ROOT / "crates" / crate
@@ -77,6 +78,20 @@ class ReleaseReadinessContractTests(unittest.TestCase):
         self.assertIn("tags:", workflow)
         self.assertIn("SHA256SUMS", workflow)
         self.assertIn("gh release create", workflow)
+        self.assertIn('python3 scripts/verify_release_version.py "$RELEASE_VERSION"', workflow)
+
+    def test_release_version_must_match_the_workspace(self) -> None:
+        script_path = ROOT / "scripts" / "verify_release_version.py"
+        spec = importlib.util.spec_from_file_location("verify_release_version", script_path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        module.verify_version("0.1.0")
+        module.verify_version("v0.1.0")
+        with self.assertRaises(ValueError):
+            module.verify_version("v0.2.0")
 
     def test_package_script_uses_stable_names_and_sha256_sidecars(self) -> None:
         script_path = ROOT / "scripts" / "package_release.py"
@@ -129,17 +144,18 @@ class ReleaseReadinessContractTests(unittest.TestCase):
         self.assertIn("[x] **Issue #11", roadmap)
         self.assertIn("Status: **release-ready on `main`; not released**", roadmap)
 
-    def test_required_ci_aggregates_ordered_publish_dry_run(self) -> None:
+    def test_required_ci_aggregates_ordered_publish_preflight(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn("release-readiness:", workflow)
         self.assertIn("needs.release-readiness.result", workflow)
+        self.assertNotIn("generate-lockfile", workflow)
 
         metadata_index = workflow.index("cargo +stable metadata --locked")
-        publish_index = workflow.index("cargo +stable publish --dry-run --locked")
-        core_index = workflow.index("-p pgpreflight-core", publish_index)
-        postgres_index = workflow.index("-p pgpreflight-postgres", publish_index)
-        cli_index = workflow.index("-p pgpreflight", postgres_index + 1)
+        publish_index = workflow.index("cargo +stable publish --dry-run --locked -p pgpreflight-core")
+        postgres_index = workflow.index("cargo +stable package --locked --no-verify -p pgpreflight-postgres")
+        cli_index = workflow.index("cargo +stable package --locked --no-verify -p pgpreflight", postgres_index + 1)
         self.assertLess(metadata_index, publish_index)
+        core_index = publish_index
         self.assertLess(core_index, postgres_index)
         self.assertLess(postgres_index, cli_index)
 

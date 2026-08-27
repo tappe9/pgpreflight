@@ -7,7 +7,7 @@
 
 v0.1 では、保守的な SQL validation、plain `EXPLAIN (FORMAT JSON, VERBOSE TRUE)`、catalog statistics、決定論的 diagnostics、versioned JSON report を組み合わせる設計です。SQLを実行するツールでも、`EXPLAIN ANALYZE` のwrapperでもありません。
 
-> **開発状況:** pre-releaseで開発中です。現在の `main` には workspace基盤、core configuration/report contract、JSON Schema v1、保守的なSQL parse/validationまで実装済みです。PostgreSQL Safe Mode planning、plan normalization、diagnostic評価、利用者向け `check` CLI は今後のv0.1実装です。
+> **開発状況:** v0.1.0 release candidateです。end-to-endの `check` CLI、PGP001〜PGP104、PostgreSQL 14〜18 safety matrix、release packagingまで実装済みですが、tagとcrate releaseはまだ公開していません。
 
 English: [README.md](README.md)
 
@@ -35,14 +35,7 @@ SQLが構文的に正しくても、安全・妥当とは限りません。`UPDA
 - accepted / rejected / known-unsupported SQL corpus
 - Rust 1.85.0によるLinux quality CIとmacOS/Windows cross-platform check
 
-まだend-to-endで未実装の範囲:
-
-- PostgreSQL connectionとSafe Mode transaction
-- `EXPLAIN` / catalog read
-- plan/statistics normalization
-- PGP001〜PGP104 rule evaluation
-- `pgpreflight check <INPUT>` のconfig discovery、rendering、exit code
-- PostgreSQL 14〜18 integration matrixとrelease packaging
+v0.1のend-to-end経路には、PostgreSQL Safe Mode planning、catalog statistics、normalized plan evidence、PGP001〜PGP104 analysis、text/schema-v1 JSON rendering、固定CLI exit codeが含まれます。
 
 実装順は [ROADMAP.md](ROADMAP.md) を参照してください。
 
@@ -79,6 +72,15 @@ deterministic PGP001–PGP104 rules
 
 planning pathでは plain `EXPLAIN` のみを使用し、**`EXPLAIN ANALYZE` は使用しません**。
 
+## CLI usage
+
+```bash
+pgpreflight check query.sql --database-url postgresql://localhost/app
+pgpreflight check - --format json --fail-on warning < query.sql
+```
+
+database URLの優先順位は `--database-url`、`PGPREFLIGHT_DATABASE_URL`、`DATABASE_URL` です。設定は `--config PATH`、またはcurrent directoryから上方向に探索した最初の `pgpreflight.toml` を使用します。exit code `0` は指定threshold未到達、`1` はdiagnostic到達、`2` はtool failureです。
+
 ## SQL policy
 
 v0.1は意図的に対象を限定します。
@@ -105,7 +107,7 @@ parserはPostgreSQLのsemantic authorityを置き換えるものではありま�
 | `PGP103` | warning | `SELECT` result set推定が大きい |
 | `PGP104` | warning | 保守的に証明できるCartesian join risk |
 
-configuration typeとdefault値はすでに `pgpreflight-core` に存在しますが、rule engine本体は未実装です。詳細は [Rules](docs/RULES.md) を参照してください。
+configuration type、default値、決定論的なrule evaluationは `pgpreflight-core` に実装済みです。詳細は [Rules](docs/RULES.md) を参照してください。
 
 ## Safety model
 
@@ -155,7 +157,7 @@ println!("{:?}", validated.facts().kind);
 # Ok::<(), pgpreflight_postgres::CheckError>(())
 ```
 
-`ValidatedStatement` は `sqlparser-rs` ASTをpublic APIへ公開しません。接続済みplanning facadeはv0.1 targetで、現時点では未実装です。
+`ValidatedStatement` は `sqlparser-rs` ASTをpublic APIへ公開しません。接続済みplanningとend-to-end CLIはv0.1で実装済みです。
 
 ## Compatibility target
 

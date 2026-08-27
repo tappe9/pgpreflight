@@ -5,6 +5,14 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+description = "Planner-backed safety preflight CLI for PostgreSQL statements"
+homepage.workspace = true
+documentation = "https://docs.rs/pgpreflight"
+readme = "README.md"
+keywords = ["postgresql", "sql", "cli", "database"]
+categories = ["command-line-utilities", "database"]
+publish = ["crates-io"]
+include = ["src/**", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [lib]
 path = "src/lib.rs"

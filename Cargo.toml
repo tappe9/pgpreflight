@@ -11,6 +11,8 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tappe9/pgpreflight"
+homepage = "https://github.com/tappe9/pgpreflight"
+documentation = "https://docs.rs/pgpreflight"
 rust-version = "1.85"
 
 [workspace.dependencies]

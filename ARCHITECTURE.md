@@ -1,8 +1,8 @@
 # pgpreflight Architecture
 
-Status: **v0.1 design contract; implementation in progress**
+Status: **v0.1 release-candidate architecture; implemented and verified**
 
-This document describes the durable architecture of pgpreflight. It intentionally distinguishes the accepted v0.1 architecture from the subset already implemented on `main`.
+This document describes the durable v0.1 architecture implemented by pgpreflight.
 
 ## 1. Architectural goals
 
@@ -226,6 +226,6 @@ Tests are divided by responsibility:
 - PostgreSQL-backed normalization/catalog tests using semantic fields;
 - rule boundary tests for thresholds, missing evidence, connected components, ordering, and summary counts;
 - CLI process integration tests for input/config/URL resolution, stdout/stderr, exit codes, redaction, and connected non-execution;
-- future PostgreSQL 14–18 integration matrix.
+- PostgreSQL 14–18 integration matrix and native release packaging.
 
 No test should turn an implementation accident into a compatibility promise when PostgreSQL itself is the intended authority.

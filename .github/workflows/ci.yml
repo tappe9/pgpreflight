@@ -94,14 +94,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Generate the workspace lockfile for release preparation
-        run: cargo +stable generate-lockfile
-      - name: Preserve the generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-11-cargo-lock
-          path: Cargo.lock
-          retention-days: 1
+      - name: Verify locked workspace metadata
+        run: cargo +stable metadata --locked --format-version 1 --no-deps
+      - name: Verify publish packages in dependency order
+        run: |
+          cargo +stable publish --dry-run --locked -p pgpreflight-core
+          cargo +stable package --locked --no-verify -p pgpreflight-postgres \
+            --config 'patch.crates-io.pgpreflight-core.path="crates/pgpreflight-core"'
+          cargo +stable package --locked --no-verify -p pgpreflight \
+            --config 'patch.crates-io.pgpreflight-core.path="crates/pgpreflight-core"' \
+            --config 'patch.crates-io.pgpreflight-postgres.path="crates/pgpreflight-postgres"'
       - name: Run release-readiness contract tests
         run: python3 -m unittest discover -s scripts/tests -v
 

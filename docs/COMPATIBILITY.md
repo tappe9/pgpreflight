@@ -1,6 +1,6 @@
 # Compatibility
 
-Status: **v0.1 compatibility contracts verified in CI; release packaging remains pending**
+Status: **v0.1 compatibility and release-packaging contracts verified in CI**
 
 This document separates source/test compatibility from release-artifact support.
 
