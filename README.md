@@ -7,7 +7,7 @@
 
 The v0.1 design combines conservative SQL validation, plain `EXPLAIN (FORMAT JSON, VERBOSE TRUE)`, catalog statistics, deterministic diagnostics, and versioned machine-readable reports. It is intentionally a **preflight tool**, not a SQL executor or an `EXPLAIN ANALYZE` wrapper.
 
-> **Project status:** pre-release and under active development. The workspace foundation, core configuration/report contracts, JSON Schema v1, and conservative SQL parsing/validation are implemented on `main`. PostgreSQL Safe Mode planning, plan normalization, diagnostic evaluation, and the end-user `check` CLI are still v0.1 work in progress.
+> **Project status:** v0.1.0 release candidate. The end-to-end `check` CLI, PGP001–PGP104 rules, PostgreSQL 14–18 safety matrix, and release packaging are implemented; no tag or crate release has been published yet.
 
 日本語版: [README.ja.md](README.ja.md)
 
@@ -37,18 +37,11 @@ Implemented today:
 - accepted/rejected/known-unsupported SQL corpus fixtures;
 - Linux quality CI and macOS/Windows cross-platform checks using Rust 1.85.0.
 
-Not yet implemented as an end-to-end product:
-
-- PostgreSQL connection and Safe Mode transaction orchestration;
-- `EXPLAIN` execution and catalog reads;
-- plan/statistics normalization;
-- PGP001–PGP104 rule evaluation;
-- `pgpreflight check <INPUT>` rendering, config discovery, and exit-code behavior;
-- PostgreSQL 14–18 integration matrix and release packaging.
+The complete v0.1 path includes PostgreSQL Safe Mode planning, catalog statistics, normalized plan evidence, PGP001–PGP104 analysis, text/schema-v1 JSON rendering, and fixed CLI exit codes.
 
 See [ROADMAP.md](ROADMAP.md) for implementation order and status.
 
-## Planned v0.1 flow
+## v0.1 flow
 
 ```text
 SQL file / stdin
@@ -79,7 +72,16 @@ deterministic PGP001–PGP104 rules
       └── JSON report schema v1
 ```
 
-The future planning path must use plain `EXPLAIN`, **never `EXPLAIN ANALYZE`**.
+The planning path uses plain `EXPLAIN`, **never `EXPLAIN ANALYZE`**.
+
+## CLI usage
+
+```bash
+pgpreflight check query.sql --database-url postgresql://localhost/app
+pgpreflight check - --format json --fail-on warning < query.sql
+```
+
+`--database-url` takes precedence over `PGPREFLIGHT_DATABASE_URL`, then `DATABASE_URL`. Configuration is read from `--config PATH` or the nearest `pgpreflight.toml` found from the current directory upward. Exit code `0` means the configured threshold was not reached, `1` means diagnostics reached it, and `2` means the tool could not complete the check.
 
 ## SQL policy
 
@@ -96,7 +98,7 @@ v0.1 is deliberately narrow:
 
 The parser is a safety gate, not PostgreSQL's semantic replacement. See [SQL support](docs/SQL-SUPPORT.md).
 
-## Diagnostics planned for v0.1
+## v0.1 diagnostics
 
 | Rule | Severity | Purpose |
 | --- | --- | --- |
@@ -107,7 +109,7 @@ The parser is a safety gate, not PostgreSQL's semantic replacement. See [SQL sup
 | `PGP103` | warning | large estimated `SELECT` result set |
 | `PGP104` | warning | conservatively provable Cartesian join risk |
 
-Configuration types and defaults already exist in `pgpreflight-core`; the rule engine itself is still planned work. See [Rules](docs/RULES.md).
+Configuration types, defaults, and deterministic rule evaluation are implemented in `pgpreflight-core`. See [Rules](docs/RULES.md).
 
 ## Safety model
 
@@ -162,7 +164,7 @@ The validated object deliberately does not expose `sqlparser-rs` AST types as pu
 ## Compatibility target
 
 - Rust: **1.85.0+** (`edition = 2024`)
-- PostgreSQL: **14–18 target**; database integration coverage is not complete yet
+- PostgreSQL: **14–18**, verified by the semantic integration matrix
 - OS target: Linux x86_64, macOS aarch64/x86_64, Windows x86_64
 
 Current CI coverage and target-vs-verified distinctions are documented in [Compatibility](docs/COMPATIBILITY.md).

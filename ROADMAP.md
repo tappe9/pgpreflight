@@ -4,7 +4,7 @@ This roadmap is directional. GitHub Issues are the execution tracker; this file 
 
 ## v0.1 — Planner-backed preflight MVP
 
-Status: **in progress on `main`; not released**.
+Status: **release-ready on `main`; not released**.
 
 Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative safety gate plus PostgreSQL's real planner, then emit deterministic text/JSON diagnostics without intentionally executing the target DML.
 
@@ -70,10 +70,13 @@ Goal: inspect one literal `SELECT`, `UPDATE`, or `DELETE` using a conservative s
   - explicit SQL-literal, credential-bearing URL, raw parser-error, and raw driver-error leak regressions across streams and public formatting;
   - stable `CI / required` aggregate check for branch protection.
 
-### Remaining v0.1 implementation order
+### Release readiness
 
-1. **Issue #11 — v0.1 OSS release readiness**  
-   packaging metadata, release workflow, final user/developer documentation, dry-run publication checks.
+- [x] **Issue #11 — v0.1 OSS release readiness**
+  - crates.io metadata and package contents for all three crates;
+  - dependency-ordered package preflight, with a core publish dry-run before the first release;
+  - four-target native release workflow and SHA-256 checksums;
+  - final English/Japanese user and developer documentation.
 
 ## v0.1 release criteria
 
@@ -86,8 +89,8 @@ Before a v0.1.0 tag, the project should demonstrate:
 - [x] PostgreSQL 14–18 semantic integration coverage;
 - [x] Linux/macOS/Windows and MSRV checks;
 - [x] explicit credential/SQL-literal/parser/driver leak regression coverage;
-- [ ] publish/release packaging checks;
-- [ ] README and final release documentation aligned with packaged behavior.
+- [x] publish/release packaging checks;
+- [x] README and final release documentation aligned with packaged behavior.
 
 ## After v0.1
 

@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to package (for example, 0.1.0)
+        required: true
+        default: 0.1.0
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build / ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: target/x86_64-unknown-linux-gnu/release/pgpreflight
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: target/x86_64-pc-windows-msvc/release/pgpreflight.exe
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            binary: target/x86_64-apple-darwin/release/pgpreflight
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary: target/aarch64-apple-darwin/release/pgpreflight
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - name: Verify release version
+        shell: bash
+        run: python3 scripts/verify_release_version.py "$RELEASE_VERSION"
+      - run: cargo +stable build --locked --release --target ${{ matrix.target }} -p pgpreflight
+      - name: Package binary and checksum
+        shell: bash
+        run: |
+          python3 scripts/package_release.py \
+            --binary "${{ matrix.binary }}" \
+            --version "${RELEASE_VERSION#v}" \
+            --target "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pgpreflight-${{ matrix.target }}
+          path: dist/*
+
+  release:
+    name: publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create combined checksum manifest
+        working-directory: dist
+        run: cat *.sha256 | sort > SHA256SUMS
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --verify-tag --generate-notes

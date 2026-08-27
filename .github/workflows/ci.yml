@@ -86,6 +86,27 @@ jobs:
           toolchain: 1.85.0
       - run: cargo +1.85.0 test --workspace --all-features
 
+  release-readiness:
+    name: release-readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Verify locked workspace metadata
+        run: cargo +stable metadata --locked --format-version 1 --no-deps
+      - name: Verify publish packages in dependency order
+        run: |
+          cargo +stable publish --dry-run --locked -p pgpreflight-core
+          cargo +stable package --locked --no-verify -p pgpreflight-postgres \
+            --config 'patch.crates-io.pgpreflight-core.path="crates/pgpreflight-core"'
+          cargo +stable package --locked --no-verify -p pgpreflight \
+            --config 'patch.crates-io.pgpreflight-core.path="crates/pgpreflight-core"' \
+            --config 'patch.crates-io.pgpreflight-postgres.path="crates/pgpreflight-postgres"'
+      - name: Run release-readiness contract tests
+        run: python3 -m unittest discover -s scripts/tests -v
+
   required:
     name: required
     if: ${{ always() }}
@@ -94,6 +115,7 @@ jobs:
       - msrv
       - cross-platform
       - postgresql
+      - release-readiness
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs
@@ -103,3 +125,4 @@ jobs:
           test "${{ needs.msrv.result }}" = "success"
           test "${{ needs.cross-platform.result }}" = "success"
           test "${{ needs.postgresql.result }}" = "success"
+          test "${{ needs.release-readiness.result }}" = "success"

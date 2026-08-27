@@ -5,6 +5,14 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+description = "Stable configuration, model, diagnostic, and report contracts for pgpreflight"
+homepage.workspace = true
+documentation = "https://docs.rs/pgpreflight-core"
+readme = "README.md"
+keywords = ["postgresql", "sql", "database", "lint"]
+categories = ["database", "development-tools"]
+publish = ["crates-io"]
+include = ["src/**", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [lib]
 path = "src/lib.rs"

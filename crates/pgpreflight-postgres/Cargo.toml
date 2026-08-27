@@ -5,6 +5,14 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+description = "Conservative PostgreSQL validation, planning, and normalization for pgpreflight"
+homepage.workspace = true
+documentation = "https://docs.rs/pgpreflight-postgres"
+readme = "README.md"
+keywords = ["postgresql", "sql", "explain", "database"]
+categories = ["database", "development-tools"]
+publish = ["crates-io"]
+include = ["src/**", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [lib]
 path = "src/lib.rs"

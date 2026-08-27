@@ -1,6 +1,6 @@
 # pgpreflight Public API Design
 
-Status: **pre-1.0 v0.1 design; partially implemented**
+Status: **pre-1.0 v0.1 API; implemented**
 
 This document defines durable public-API boundaries. It separates types/functions available on `main` from APIs planned for later v0.1 slices.
 
@@ -42,11 +42,11 @@ Validation also constructs the conservative `JoinGraph` used by PGP104. The grap
 
 `PlanningError` classifies connection, transaction, configuration, timeout, planning, invalid-plan, catalog, and rollback failures without surfacing raw driver messages.
 
-## 3. Planned connected facade
+## 3. Connected CLI facade
 
-A higher-level v0.1 facade/CLI path that combines input handling, validation, planning, rule evaluation, and report rendering remains planned. Exact names and signatures are not an API commitment before that slice lands.
+The `pgpreflight check <INPUT>` path combines input handling, validation, planning, rule evaluation, and report rendering while keeping its orchestration internals private.
 
-Whatever facade is chosen must preserve these boundaries:
+The facade preserves these boundaries:
 
 - validation occurs before planning;
 - target DML is only passed to plain `EXPLAIN`;
