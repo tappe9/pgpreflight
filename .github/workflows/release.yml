@@ -53,7 +53,7 @@ jobs:
             --binary "${{ matrix.binary }}" \
             --version "${RELEASE_VERSION#v}" \
             --target "${{ matrix.target }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pgpreflight-${{ matrix.target }}
           path: dist/*
