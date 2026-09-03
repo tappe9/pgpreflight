@@ -24,4 +24,4 @@ thiserror = { workspace = true }
 toml = "0.8"
 
 [dev-dependencies]
-jsonschema = "0.26"
+jsonschema = "0.52"
