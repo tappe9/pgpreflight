@@ -20,7 +20,7 @@ path = "src/lib.rs"
 [dependencies]
 pgpreflight-core = { path = "../pgpreflight-core", version = "0.1.0" }
 serde_json = { workspace = true }
-sqlparser = { version = "0.62", default-features = false, features = ["std", "visitor"] }
+sqlparser = { version = "0.63", default-features = false, features = ["std", "visitor"] }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
